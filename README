@@ -1,6 +1,7 @@
-# BudgetFree
-A free desktop budgeting application that helps you track your finances
-and literally frees you from complex budgeting.
+# BUDGETFREE
+
+A FREE desktop budgeting application that helps you track your finances
+and literally FREES you from complex budgeting.
 
 Copyright © 2016 Eric John Fredericks.
 
@@ -17,6 +18,213 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
------
+// TODO: Add the following:
+//
+// Found a bug? Please [help us fix it](opens bug report form).
+//
+//By using this application, you agree to our [terms and services](opens dialog).
+
+===============================================================================
 
 NOTE THAT THIS PROJECT IS UNDER ACTIVE DEVELOPMENT.
+
+===============================================================================
+
+IANAL DISCLAIMER:
+
+It is the author's intention to comply with all software licenses
+of software libraries, graphics, and any other work that is used statically
+or dynamically in this application. That being said:
+
+     I AM NOT A LAWYER (IANAL)!
+
+I welcome any input from the general public about correcting the way I am
+doing things in order to comply with the license terms of any work I am
+reusing and/or redistributing in this application. Please contact me by
+e-mail at:
+
+     eric@ericfredericks.net
+
+I will gladly investigate changes to bring this application into compliance
+with any license terms applicable to works re-used in and redistributed with
+this application.
+
+THIS APPLICATION INCLUDES SEVERAL OPEN-SOURCE LIBRARIES. LICENSING
+INFORMATION FOLLOWS.
+
+===============================================================================
+
+SLF4J: Simple Logging Facade for Java.
+
+Copyright (c) 2004-2013 QOS.ch
+All rights reserved.
+
+Permission is hereby granted, free  of charge, to any person obtaining
+a  copy  of this  software  and  associated  documentation files  (the
+"Software"), to  deal in  the Software without  restriction, including
+without limitation  the rights to  use, copy, modify,  merge, publish,
+distribute,  sublicense, and/or sell  copies of  the Software,  and to
+permit persons to whom the Software  is furnished to do so, subject to
+the following conditions:
+ 
+The  above  copyright  notice  and  this permission  notice  shall  be
+included in all copies or substantial portions of the Software.
+ 
+THE  SOFTWARE IS  PROVIDED  "AS  IS", WITHOUT  WARRANTY  OF ANY  KIND,
+EXPRESS OR  IMPLIED, INCLUDING  BUT NOT LIMITED  TO THE  WARRANTIES OF
+MERCHANTABILITY,    FITNESS    FOR    A   PARTICULAR    PURPOSE    AND
+NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+OF CONTRACT, TORT OR OTHERWISE,  ARISING FROM, OUT OF OR IN CONNECTION
+WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+===============================================================================
+
+SCALAFX
+
+LICENSE   LICENSE   LICENSE   LICENSE   LICENSE   LICENSE   LICENSE   LICENSE   
+
+See http://opensource.org/licenses/BSD-3-Clause
+Here is the download, the full License text
+
+<OWNER> = ScalaFX Open Source Project Committers
+<ORGANIZATION> = The ScalaFX Developer Team, Globally
+<YEAR> = 2013
+
+In the original BSD license, both occurrences of the phrase "COPYRIGHT HOLDERS
+AND CONTRIBUTORS" in the disclaimer read "REGENTS AND CONTRIBUTORS".
+
+Here is the license:
+
+Copyright (c) 2013, ScalaFX Open Source Project Committers,
+The ScalaFX Developer Team, Globally
+All rights reserved.
+
+Redistribution and use in source and binary forms, with or without modification,
+are permitted provided that the following conditions are met:
+
+Redistributions of source code must retain the above copyright notice, this list
+of conditions and the following disclaimer.
+
+Redistributions in binary form must reproduce the above copyright notice, this
+list of conditions and the following disclaimer in the documentation and/or
+other materials provided with the distribution.
+
+Neither the name of the `The ScalaFX Developer Team, nor the names of its
+contributors may be used to endorse or promote products derived from this
+software without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
+ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+(INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
+ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+===============================================================================
+
+GRIZZLED SLF4J
+
+This software is released under a BSD license, adapted from
+http://opensource.org/licenses/bsd-license.php
+
+Copyright © 2010-2012 Brian M. Clapper. All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions
+are met:
+
+Redistributions of source code must retain the above copyright notice, this
+list of conditions and the following disclaimer.
+
+Redistributions in binary form must reproduce the above copyright notice,
+this list of conditions and the following disclaimer in the documentation
+and/or other materials provided with the distribution.
+
+Neither the name “clapper.org” nor the names of its contributors may be used
+to endorse or promote products derived from this software without specific
+prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS “AS IS”
+AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
+LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+POSSIBILITY OF SUCH DAMAGE.
+
+===============================================================================
+
+AKKA
+
+Copyright 2009-2016 Lightbend Inc. [http://www.lightbend.com]
+
+Licensed under the Apache License, Version 2.0 (the "License"); you may not
+use this file except in compliance with the License. You may obtain a copy of
+the License at
+
+    [http://www.apache.org/licenses/LICENSE-2.0]
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+License for the specific language governing permissions and limitations under
+the License.
+
+---------------
+
+Licenses for dependency projects can be found here:
+[http://akka.io/docs/akka/snapshot/project/licenses.html]
+
+---------------
+
+akka-protobuf contains the sources of Google protobuf 2.5.0 runtime support,
+moved into the source package `akka.protobuf` so as to avoid version conflicts.
+For license information see COPYING.protobuf
+
+===============================================================================
+
+SCALACTIC
+
+Scalactic is brought to you by Bill Venners, with contributions from several
+other folks. It is sponsored by Artima, Inc.
+
+ScalaTest is free, open-source software released under the Apache 2.0 license.
+
+Copyright © 2009-2016 Artima, Inc. All Rights Reserved.
+
+===============================================================================
+
+SCALATEST
+
+ScalaTest is brought to you by Bill Venners and Artima.
+
+ScalaTest is free, open-source software released under the Apache 2.0 license.
+
+If your company loves ScalaTest, please consider sponsoring the project.
+
+Copyright © 2009-2016 Artima, Inc. All Rights Reserved.
+
+===============================================================================
+
+ICONS8
+
+The icons are free for personal use and also free for commercial use, but we
+require linking to our web site:
+
+     https://icons8.com/
+
+We distribute them under the license called Creative Commons
+Attribution-NoDerivs 3.0 Unported:
+
+     https://creativecommons.org/licenses/by-nd/3.0/legalcode
+
+
