@@ -24,9 +24,14 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 //
 //By using this application, you agree to our [terms and services](opens dialog).
 
+
 ===============================================================================
 
 NOTE THAT THIS PROJECT IS UNDER ACTIVE DEVELOPMENT.
 
 ===============================================================================
+
+Third-party licensing information is available in:
+
+    ./src/main/resources/THIRD_PARTY_LICENSING
 

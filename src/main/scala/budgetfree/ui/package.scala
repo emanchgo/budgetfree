@@ -19,6 +19,9 @@ package object ui extends Logging {
   private[ui] val ApplicationIconImage = new Image(ApplicationIconUrl.toExternalForm, 64, 64, true, true)
   private[ui] def ApplicationIconImageView = new ImageView(ApplicationIconImage)
 
+  private[this] val ThirdPartyLicenseTextPath = "THIRD_PARTY_LICENSING"
+  private[ui] val ThirdPartyLicenseUrlTextUri = getClass.getClassLoader.getResource(ThirdPartyLicenseTextPath).toURI
+
   private[ui] object ButtonTypes {
 //    val Add = new ButtonType("_Add", ButtonBar.ButtonData.OKDone)
 //    val Cancel = new ButtonType("_Cancel", ButtonBar.ButtonData.CancelClose)
