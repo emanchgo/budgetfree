@@ -1,7 +1,0 @@
-slf4j: MIT (identical)
-scalafx: BSD 3-clause
-grizzled-slf4j: 3 clause BSD
-Akka: Apache v2
-Scalactic: Apache v2
-Scalatest: Apache v2
-
