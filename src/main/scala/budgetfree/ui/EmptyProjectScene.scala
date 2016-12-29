@@ -79,7 +79,7 @@ private[ui] class EmptyProjectScene extends Scene with Logging {
 
   root = new BorderPane {
     padding = Insets(100, 250, 100, 250)
-    background = new Background(Seq(new BackgroundFill(BudgetFreeColor.PenguinPurple, null, null)), Seq.empty)
+    background = new Background(Seq(new BackgroundFill(Color.LightSlateGray, null, null)), Seq.empty)
 
     center = new VBox {
       spacing = 20
