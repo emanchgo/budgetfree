@@ -25,19 +25,26 @@ package budgetfree.ui
 
 import grizzled.slf4j.Logging
 
+import scalafx.application.Platform
 import scalafx.geometry.{Insets, Pos}
 import scalafx.scene.Scene
 import scalafx.scene.control.Button
-import scalafx.scene.image.{Image, ImageView}
-import scalafx.scene.layout.{Background, BackgroundFill, BorderPane, VBox}
+import scalafx.scene.effect.DropShadow
+import scalafx.scene.image.ImageView
+import scalafx.scene.layout._
 import scalafx.scene.paint.Color
+
+private[ui] object WelcomeScreenScene {
+
+  val buttonWidth: Double = 275
+  val buttonStyle = "-fx-font-size: 1.25em; -fx-text-fill: #660066; border: 2px solid #000000; "
+}
 
 private[ui] class WelcomeScreenScene extends Scene with Logging {
 
-  private[this] val buttonWidth: Double = 200
+  import WelcomeScreenScene._
 
-  private[ui] val image = new Image(ApplicationIconUrl.toExternalForm, 96, 96, true, true)
-  private[ui] val imageView = new ImageView(image)
+  val imageView = new ImageView(ApplicationIconImage96)
 
   private[this] val overviewButton = new Button {
     mnemonicParsing = true
@@ -45,6 +52,8 @@ private[ui] class WelcomeScreenScene extends Scene with Logging {
     tooltip = "Display an overview of BudgetFree"
     onAction = _ => logger.debug("BudgetFree overview called")
     minWidth = buttonWidth
+    style = buttonStyle
+    effect = new DropShadow()
   }
 
   private[this] val newProjectButton = new Button {
@@ -53,6 +62,8 @@ private[ui] class WelcomeScreenScene extends Scene with Logging {
     tooltip = "Create a new BudgetFree Project"
     onAction = _ => logger.debug("Create new project called")
     minWidth = buttonWidth
+    style = buttonStyle
+    effect = new DropShadow()
   }
 
   private[this] val openProjectButton = new Button {
@@ -64,6 +75,8 @@ private[ui] class WelcomeScreenScene extends Scene with Logging {
       Main.changeScene()
     }
     minWidth = buttonWidth
+    style = buttonStyle
+    effect = new DropShadow()
   }
 
   private[this] val aboutButton = new Button {
@@ -72,6 +85,8 @@ private[ui] class WelcomeScreenScene extends Scene with Logging {
     tooltip = "About BudgetFree"
     onAction = _ => new HelpAboutDialog().showAndWait()
     minWidth = buttonWidth
+    style = buttonStyle
+    effect = new DropShadow()
   }
 
   private[this] val exitButton = new Button {
@@ -83,6 +98,8 @@ private[ui] class WelcomeScreenScene extends Scene with Logging {
       Main.conditionallyClose()
     }
     minWidth = buttonWidth
+    style = buttonStyle
+    effect = new DropShadow()
   }
 
   root = new BorderPane {
@@ -92,7 +109,9 @@ private[ui] class WelcomeScreenScene extends Scene with Logging {
     center = new VBox {
       spacing = 20
       alignment = Pos.Center
-      children = Seq(imageView, overviewButton, newProjectButton, openProjectButton, aboutButton, exitButton)
+      children = Seq(imageView, overviewButton, blankLabel, openProjectButton, newProjectButton, blankLabel, aboutButton, exitButton)
     }
   }
+
+  Platform.runLater(openProjectButton.requestFocus())
 }

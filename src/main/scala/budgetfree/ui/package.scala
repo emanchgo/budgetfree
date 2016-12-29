@@ -40,8 +40,10 @@ package object ui extends Logging {
 
   private[this] val ApplicationIconPath = "MoneyTransfer-100.png"
   private[ui] val ApplicationIconUrl = getClass.getClassLoader.getResource(ApplicationIconPath)
-  private[ui] val ApplicationIconImage = new Image(ApplicationIconUrl.toExternalForm, 64, 64, true, true)
-  private[ui] def ApplicationIconImageView = new ImageView(ApplicationIconImage)
+  private[ui] val ApplicationIconImage64 = new Image(ApplicationIconUrl.toExternalForm, 64, 64, true, true)
+  private[ui] val ApplicationIconImage96 = new Image(ApplicationIconUrl.toExternalForm, 96, 96, true, true)
+  private[ui] def ApplicationIconImageView = new ImageView(ApplicationIconImage64)
+
 
   private[this] val ThirdPartyLicenseTextPath = "THIRD_PARTY_LICENSING"
   private[ui] val ThirdPartyLicenseUrlTextUri = getClass.getClassLoader.getResource(ThirdPartyLicenseTextPath).toURI

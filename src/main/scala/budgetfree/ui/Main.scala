@@ -51,7 +51,7 @@ private[ui] object Main extends JFXApp with Logging {
     //    minWidth = 1200
     //    minHeight = 800
     //delegate.setMaximized(true)
-    icons += ApplicationIconImage
+    icons += ApplicationIconImage64
 
     scene = new WelcomeScreenScene
 
