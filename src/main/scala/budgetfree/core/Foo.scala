@@ -20,26 +20,11 @@
  *  along with BudgetFree.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+package budgetfree.core
 
-import java.io.File
-import java.text.DecimalFormat
+/**
+  * Created by eric on 12/28/16.
+  */
+class Foo {
 
-import grizzled.slf4j.Logging
-
-package object budgetfree extends Logging {
-
-  object constants {
-    val ApplicationName = "BudgetFree"
-    val ApplicationVersion = "0.1.0"
-
-    val UserHomeDir = new File(System.getProperty("user.home"))
-    val ApplicationHomeDir = new File(UserHomeDir, ".budgetfree")
-    val ProjectsHomeDir = new File(ApplicationHomeDir, "projects")
-    ProjectsHomeDir.mkdirs()
-  }
-
-  val monetaryValueFormatter = new DecimalFormat() {
-    setMinimumFractionDigits(2)
-    setMaximumFractionDigits(2)
-  }
 }
