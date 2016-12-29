@@ -33,6 +33,7 @@ import scala.util.{Failure, Try}
 import scalafx.scene.control.Alert.AlertType
 import scalafx.scene.control.{Alert, ButtonBar, ButtonType, Label}
 import scalafx.scene.image.{Image, ImageView}
+import scalafx.scene.paint.Color
 
 package object ui extends Logging {
 
@@ -45,6 +46,10 @@ package object ui extends Logging {
   private[ui] val ThirdPartyLicenseUrlTextUri = getClass.getClassLoader.getResource(ThirdPartyLicenseTextPath).toURI
 
   def blankLabel = Label(" ")
+
+  private[ui] object BudgetFreeColor {
+    val PenguinPurple: Color = Color.rgb(66,0,66)
+  }
 
   private[ui] object ButtonTypes {
 //    val Add = new ButtonType("_Add", ButtonBar.ButtonData.OKDone)

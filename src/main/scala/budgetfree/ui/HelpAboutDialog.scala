@@ -31,9 +31,7 @@ import scalafx.event.ActionEvent
 import scalafx.scene.control.Alert.AlertType
 import scalafx.scene.control.{Alert, _}
 import scalafx.scene.layout.VBox
-/**
-  * Created by eric on 12/25/16.
-  */
+
 private[ui] class HelpAboutDialog extends Alert(AlertType.Information) {
   title = ApplicationName
   initOwner(Main.stage)

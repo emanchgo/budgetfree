@@ -26,13 +26,11 @@ package budgetfree.ui
 import scalafx.Includes._
 import scalafx.geometry.Insets
 import scalafx.geometry.Orientation.Vertical
+import scalafx.scene.Scene
 import scalafx.scene.control.{Label, SplitPane}
 import scalafx.scene.layout.{BorderPane, VBox}
 
-/**
-  * Created by eric on 12/26/16.
-  */
-private[ui] class ActiveProjectPane extends SplitPane {
+private[ui] class ActiveProjectScene extends Scene {
 
   // With border panes - last in has priority.
   private[this] val accountPane = new BorderPane {
@@ -72,7 +70,13 @@ private[ui] class ActiveProjectPane extends SplitPane {
     minHeight = 100
   }
 
-  orientation = Vertical
-  dividerPositions_=(0)
-  items ++= Seq(mainPane, transactionDetailPane)
+  root = new BorderPane {
+    center = new SplitPane {
+      orientation = Vertical
+      dividerPositions_=(0)
+      items ++= Seq(mainPane, transactionDetailPane)
+    }
+    top = Label("Main Menu")
+  }
+
 }

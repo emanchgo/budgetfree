@@ -47,19 +47,17 @@ private[ui] object Main extends JFXApp with Logging {
 
   stage = new PrimaryStage {
     title = ApplicationName
-    minWidth = 1200
-    minHeight = 800
+    //    minWidth = 1200
+    //    minHeight = 800
     //delegate.setMaximized(true)
     icons += ApplicationIconImage
 
-    scene = new BudgetFreeScene
+    scene = new EmptyProjectScene
 
-    onCloseRequest = (ev:WindowEvent) => {
+    onCloseRequest = (ev: WindowEvent) => {
       logger.debug("user close requested")
-      if(confirmQuitWithUser()) {
-        shutdown()
-        // If the user does not confirm that they want to close, consume the event to prevent
-        // SFX/JFX from terminating.
+      if (conditionallyClose()) {
+        logger.debug("Close request confirmed")
       }
       else {
         ev.consume()
@@ -67,58 +65,27 @@ private[ui] object Main extends JFXApp with Logging {
     }
   }
 
-  //  stage = new PrimaryStage {
-//    title = ApplicationName
-//    minWidth = 1200
-//    minHeight = 800
-//    delegate.setMaximized(true)
-//
-//    scene = new Scene {
-//      icons += ApplicationIconImage
-//      fill = Color.LightGray
-//
-//      // With border panes - last in has priority.
-//      private[this] val bidderPane = new BorderPane {
-//        padding = Insets(20, 10, 10, 10)
-//        center = BidderUI.tableView
-//        top = BidderUI.header
-//      }
-//
-//      private[this] val itemPane = new BorderPane {
-//        padding = Insets(20, 10, 10, 10)
-//        center = AuctionItemUI.tableView
-//        top = AuctionItemUI.header
-//      }
-//
-//      root = new BorderPane { // main pane
-//        center = new SplitPane {
-//          dividerPositions_=(0.30, 0.70)
-//          items ++= Seq(bidderPane, itemPane)
-//        }
-//
-//        top = MainMenuBar
-//      }
-//    }
-//
-//    onCloseRequest = (ev:WindowEvent) => {
-//      logger.debug("user close requested")
-//      if(confirmQuitWithUser()) {
-//        shutdown()
-//        // If the user does not confirm that they want to close, consume the event to prevent
-//        // SFX/JFX from terminating.
-//      }
-//      else {
-//        ev.consume()
-//      }
-//    }
-//  }
+  def conditionallyClose(): Boolean = {
+    if(confirmQuitWithUser()) {
+      shutdown()
+      true
+    }
+    else {
+      false
+    }
+  }
+
+  def changeScene(): Unit = {
+    stage.scene = new ActiveProjectScene
+    stage.delegate.setMaximized(true)
+  }
 
   def showHelpAboutDialog() {
     logger.debug("showHelpAboutDialog called")
     new HelpAboutDialog().showAndWait()
   }
 
-  def confirmQuitWithUser(): Boolean = {
+  private[this] def confirmQuitWithUser(): Boolean = {
     logger.debug("showQuitDialog called")
 
     val result = new Alert(AlertType.Confirmation) {
@@ -132,7 +99,7 @@ private[ui] object Main extends JFXApp with Logging {
     result.map(bt => if(bt == Yes) true else false).orElse(Some(false)).get
   }
 
-  private[ui] def shutdown() {
+  def shutdown() {
     errorDialogIntercept(BudgetFree.shutdown())
     logger.info("Application closing")
     Platform.exit()
