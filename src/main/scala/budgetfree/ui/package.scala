@@ -9,7 +9,7 @@ import scala.reflect.runtime.{universe => ru}
 import scala.util.control.NonFatal
 import scala.util.{Failure, Try}
 import scalafx.scene.control.Alert.AlertType
-import scalafx.scene.control.{Alert, ButtonBar, ButtonType}
+import scalafx.scene.control.{Alert, ButtonBar, ButtonType, Label}
 import scalafx.scene.image.{Image, ImageView}
 
 package object ui extends Logging {
@@ -21,6 +21,8 @@ package object ui extends Logging {
 
   private[this] val ThirdPartyLicenseTextPath = "THIRD_PARTY_LICENSING"
   private[ui] val ThirdPartyLicenseUrlTextUri = getClass.getClassLoader.getResource(ThirdPartyLicenseTextPath).toURI
+
+  def blankLabel = Label(" ")
 
   private[ui] object ButtonTypes {
 //    val Add = new ButtonType("_Add", ButtonBar.ButtonData.OKDone)

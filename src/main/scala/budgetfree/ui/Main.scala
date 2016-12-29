@@ -10,12 +10,8 @@ import grizzled.slf4j.Logging
 import scalafx.Includes._
 import scalafx.application.JFXApp.PrimaryStage
 import scalafx.application.{JFXApp, Platform}
-import scalafx.geometry.Insets
-import scalafx.scene.Scene
 import scalafx.scene.control.Alert.AlertType
 import scalafx.scene.control._
-import scalafx.scene.layout.{BorderPane, VBox}
-import scalafx.scene.paint.Color
 import scalafx.stage.WindowEvent
 
 private[ui] object Main extends JFXApp with Logging {
@@ -31,34 +27,10 @@ private[ui] object Main extends JFXApp with Logging {
     title = ApplicationName
     minWidth = 1200
     minHeight = 800
-    delegate.setMaximized(true)
+    //delegate.setMaximized(true)
+    icons += ApplicationIconImage
 
-    scene = new Scene {
-      icons += ApplicationIconImage
-      fill = Color.LightGray
-
-      // With border panes - last in has priority.
-      private[this] val accountPane = new BorderPane {
-        padding = Insets(20, 10, 10, 10)
-//        center = BidderUI.tableView
-//        top = BidderUI.header
-      }
-
-      private[this] val transactionPane = new BorderPane {
-        padding = Insets(20, 10, 10, 10)
-//        center = AuctionItemUI.tableView
-//        top = AuctionItemUI.header
-      }
-
-      root = new BorderPane { // main pane
-        center = new SplitPane {
-          dividerPositions_=(0.30, 0.70)
-          items ++= Seq(accountPane, transactionPane)
-        }
-
-        top = new VBox
-      }
-    }
+    scene = new BudgetFreeScene
 
     onCloseRequest = (ev:WindowEvent) => {
       logger.debug("user close requested")

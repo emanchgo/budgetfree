@@ -18,23 +18,21 @@ private[ui] class HelpAboutDialog extends Alert(AlertType.Information) {
   graphic = ApplicationIconImageView
   headerText = "About BudgetFree"
 
-  def blankLabel = new Label(" ")
-
-  val appLabel_1 = new Label(s"BudgetFree Version $ApplicationVersion")
-  val description_1 = new Label("A FREE desktop application that helps you track your finances")
-  val description_2 = new Label("and literally FREES you from complex budgeting!")
-  val copyrightLabel = new Label("Copyright © 2016 Eric John Fredericks")
-  val licenseLinkLabel = new Label("This software is licensed  under the")
+  val appLabel_1 = Label(s"BudgetFree Version $ApplicationVersion")
+  val description_1 = Label("A FREE desktop application that helps you track your finances")
+  val description_2 = Label("and literally FREES you from complex budgeting!")
+  val copyrightLabel = Label("Copyright © 2016-2017 Eric John Fredericks")
+  val licenseLinkLabel = Label("This software is licensed  under the")
   val licenseLink = new Hyperlink {
     text = "GNU General Public License, version 3.0"
     onAction = (_: ActionEvent) => { Main.hostServices.showDocument("https://www.gnu.org/licenses/gpl-3.0.txt")}
   }
-  val iconLinkLabel = new Label("Icons provided are free for personal or commercial use under license by")
+  val iconLinkLabel = Label("Icons provided are free for personal or commercial use under license by")
   val iconLink = new Hyperlink {
     text = "Icons8."
     onAction = (_: ActionEvent) => { Main.hostServices.showDocument("https://icons8.com")}
   }
-  val thirdPartyLicenseLinkLabel = new Label("This software incorporates many open source libraries.")
+  val thirdPartyLicenseLinkLabel = Label("This software incorporates many open source libraries.")
 
   private[this] def thirdPartyLicenseText = {
     val fileContents = Source.fromFile(ThirdPartyLicenseUrlTextUri).getLines.mkString("\n")
