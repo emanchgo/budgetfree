@@ -34,6 +34,7 @@ import scalafx.scene.control.Alert.AlertType
 import scalafx.scene.control.{Alert, ButtonBar, ButtonType, Label}
 import scalafx.scene.image.{Image, ImageView}
 import scalafx.scene.paint.Color
+import scalafx.stage.Modality.ApplicationModal
 
 package object ui extends Logging {
 
@@ -102,6 +103,7 @@ package object ui extends Logging {
   private[ui] def errorDialog = (msg: String) => {
     new Alert(AlertType.Error) {
       initOwner(Main.stage)
+      initModality(ApplicationModal)
       title = ApplicationName
       buttonTypes = Seq(Close)
       headerText = s"$ApplicationName Error"

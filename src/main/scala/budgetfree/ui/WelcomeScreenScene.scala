@@ -32,12 +32,20 @@ import scalafx.scene.image.{Image, ImageView}
 import scalafx.scene.layout.{Background, BackgroundFill, BorderPane, VBox}
 import scalafx.scene.paint.Color
 
-private[ui] class EmptyProjectScene extends Scene with Logging {
+private[ui] class WelcomeScreenScene extends Scene with Logging {
 
-  private[this] val buttonWidth: Double = 175
+  private[this] val buttonWidth: Double = 200
 
   private[ui] val image = new Image(ApplicationIconUrl.toExternalForm, 96, 96, true, true)
   private[ui] val imageView = new ImageView(image)
+
+  private[this] val overviewButton = new Button {
+    mnemonicParsing = true
+    text = "_BudgetFree Overview..."
+    tooltip = "Display an overview of BudgetFree"
+    onAction = _ => logger.debug("BudgetFree overview called")
+    minWidth = buttonWidth
+  }
 
   private[this] val newProjectButton = new Button {
     mnemonicParsing = true
@@ -84,7 +92,7 @@ private[ui] class EmptyProjectScene extends Scene with Logging {
     center = new VBox {
       spacing = 20
       alignment = Pos.Center
-      children = Seq(imageView, newProjectButton, openProjectButton, aboutButton, exitButton)
+      children = Seq(imageView, overviewButton, newProjectButton, openProjectButton, aboutButton, exitButton)
     }
   }
 }

@@ -34,6 +34,7 @@ import scalafx.application.JFXApp.PrimaryStage
 import scalafx.application.{JFXApp, Platform}
 import scalafx.scene.control.Alert.AlertType
 import scalafx.scene.control._
+import scalafx.stage.Modality._
 import scalafx.stage.WindowEvent
 
 private[ui] object Main extends JFXApp with Logging {
@@ -52,7 +53,7 @@ private[ui] object Main extends JFXApp with Logging {
     //delegate.setMaximized(true)
     icons += ApplicationIconImage
 
-    scene = new EmptyProjectScene
+    scene = new WelcomeScreenScene
 
     onCloseRequest = (ev: WindowEvent) => {
       logger.debug("user close requested")
@@ -90,13 +91,14 @@ private[ui] object Main extends JFXApp with Logging {
 
     val result = new Alert(AlertType.Confirmation) {
       title = ApplicationName
+      initModality(ApplicationModal)
       initOwner(Main.stage)
       headerText = "Exit BudgetFree?"
       buttonTypes = Seq(Yes,No)
       contentText = "Are you sure you want to exit BudgetFree?"
     }.showAndWait()
 
-    result.map(bt => if(bt == Yes) true else false).orElse(Some(false)).get
+    result.map(bt => if(bt == Yes) true else false).fold(false)(identity)
   }
 
   def shutdown() {

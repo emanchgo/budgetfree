@@ -31,10 +31,12 @@ import scalafx.event.ActionEvent
 import scalafx.scene.control.Alert.AlertType
 import scalafx.scene.control.{Alert, _}
 import scalafx.scene.layout.VBox
+import scalafx.stage.Modality._
 
 private[ui] class HelpAboutDialog extends Alert(AlertType.Information) {
   title = ApplicationName
   initOwner(Main.stage)
+  initModality(ApplicationModal)
   graphic = ApplicationIconImageView
   headerText = "About BudgetFree"
 
@@ -69,6 +71,7 @@ private[ui] class HelpAboutDialog extends Alert(AlertType.Information) {
     onAction = _ => new Alert(AlertType.Information) {
       title = ApplicationName
       initOwner(Main.stage)
+      initModality(ApplicationModal)
       headerText = "Third Party Licensing"
       dialogPane().content = thirdPartyLicenseText
       dialogPane().setPrefSize(700, 800) // I tried setting the width/height values and the width didn't work.
