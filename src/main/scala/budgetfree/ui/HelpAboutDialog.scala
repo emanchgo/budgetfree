@@ -24,6 +24,7 @@ package budgetfree.ui
 
 import budgetfree.constants.{ApplicationName, ApplicationVersion}
 import budgetfree.ui.ButtonTypes._
+import budgetfree.ui.fxext.AppModalAlert
 
 import scala.io.Source
 import scalafx.Includes._
@@ -56,7 +57,7 @@ private[ui] class HelpAboutDialog extends Alert(AlertType.Information) {
   }
   val thirdPartyLicenseLinkLabel = Label("This software incorporates many open source libraries.")
 
-  private[this] def thirdPartyLicenseText = {
+  private[this] def thirdPartyLicenseTextArea = {
     val fileContents = Source.fromFile(ThirdPartyLicenseUrlTextUri).getLines.mkString("\n")
     val ta = new TextArea(fileContents)
     ta.editable = false
@@ -68,15 +69,11 @@ private[ui] class HelpAboutDialog extends Alert(AlertType.Information) {
     text = "_Third-Party Licenses..."
 
     tooltip = "Click here for third-party licensing information"
-    onAction = _ => new Alert(AlertType.Information) {
-      title = ApplicationName
-      initOwner(Main.stage)
-      initModality(ApplicationModal)
+    onAction = _ => new AppModalAlert(AlertType.Information) {
       headerText = "Third Party Licensing"
-      dialogPane().content = thirdPartyLicenseText
+      dialogPane().content = thirdPartyLicenseTextArea
       dialogPane().setPrefSize(700, 800) // I tried setting the width/height values and the width didn't work.
       buttonTypes = Seq(Ok)
-      resizable = false
     }.showAndWait()
   }
 

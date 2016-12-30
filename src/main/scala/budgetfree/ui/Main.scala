@@ -27,6 +27,7 @@ import javafx.application.Application
 import budgetfree.constants.ApplicationName
 import budgetfree.core.BudgetFree
 import budgetfree.ui.ButtonTypes._
+import budgetfree.ui.fxext.AppModalAlert
 import grizzled.slf4j.Logging
 
 import scalafx.Includes._
@@ -89,10 +90,7 @@ private[ui] object Main extends JFXApp with Logging {
   private[this] def confirmQuitWithUser(): Boolean = {
     logger.debug("showQuitDialog called")
 
-    val result = new Alert(AlertType.Confirmation) {
-      title = ApplicationName
-      initModality(ApplicationModal)
-      initOwner(Main.stage)
+    val result = new AppModalAlert(AlertType.Confirmation) {
       headerText = "Exit BudgetFree?"
       buttonTypes = Seq(Yes,No)
       contentText = "Are you sure you want to exit BudgetFree?"

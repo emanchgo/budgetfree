@@ -23,11 +23,13 @@
 
 package budgetfree.ui
 
+import budgetfree.ui.fxext.AppModalAlert
 import grizzled.slf4j.Logging
 
 import scalafx.application.Platform
 import scalafx.geometry.{Insets, Pos}
 import scalafx.scene.Scene
+import scalafx.scene.control.Alert.AlertType
 import scalafx.scene.control.Button
 import scalafx.scene.effect.DropShadow
 import scalafx.scene.image.ImageView
@@ -36,8 +38,15 @@ import scalafx.scene.paint.Color
 
 private[ui] object WelcomeScreenScene {
 
-  val buttonWidth: Double = 275
-  val buttonStyle = "-fx-font-size: 1.25em; -fx-text-fill: #660066; border: 2px solid #000000; "
+  val buttonWidth: Double = 250
+  val buttonStyle = "-fx-font-size: 1.15em; -fx-text-fill: #000000; -fx-border-style: solid; -fx-border-width: 1; -fx-border-color: #000000; -fx-border-radius: 5 5 5 5; "
+
+  abstract class WelcomeScreenButton extends Button {
+    mnemonicParsing = true
+    minWidth = buttonWidth
+    style = buttonStyle
+    effect = new DropShadow
+  }
 }
 
 private[ui] class WelcomeScreenScene extends Scene with Logging {
@@ -46,60 +55,40 @@ private[ui] class WelcomeScreenScene extends Scene with Logging {
 
   val imageView = new ImageView(ApplicationIconImage96)
 
-  private[this] val overviewButton = new Button {
-    mnemonicParsing = true
+  private[this] val overviewButton = new WelcomeScreenButton {
     text = "_BudgetFree Overview..."
     tooltip = "Display an overview of BudgetFree"
-    onAction = _ => logger.debug("BudgetFree overview called")
-    minWidth = buttonWidth
-    style = buttonStyle
-    effect = new DropShadow()
+    onAction = _ => {
+      logger.debug("BudgetFree overview called")
+      new AppModalAlert(AlertType.Information) {
+        headerText = "BudgetFree Overview"
+        contentText = "OVERVIEW TEXT HERE"
+      }.showAndWait()
+    }
   }
 
-  private[this] val newProjectButton = new Button {
-    mnemonicParsing = true
-    text = "_New Project..."
-    tooltip = "Create a new BudgetFree Project"
-    onAction = _ => logger.debug("Create new project called")
-    minWidth = buttonWidth
-    style = buttonStyle
-    effect = new DropShadow()
-  }
-
-  private[this] val openProjectButton = new Button {
-    mnemonicParsing = true
-    text = "_Open Project..."
+  private[this] val openProjectButton = new WelcomeScreenButton {
+    text = "_Open / Create Project..."
     tooltip = "Open an existing BudgetFree Project"
     onAction = { _ =>
       logger.debug("Open existing project called")
       Main.changeScene()
     }
-    minWidth = buttonWidth
-    style = buttonStyle
-    effect = new DropShadow()
   }
 
-  private[this] val aboutButton = new Button {
-    mnemonicParsing = true
+  private[this] val aboutButton = new WelcomeScreenButton {
     text = "_About BudgetFree..."
     tooltip = "About BudgetFree"
     onAction = _ => new HelpAboutDialog().showAndWait()
-    minWidth = buttonWidth
-    style = buttonStyle
-    effect = new DropShadow()
   }
 
-  private[this] val exitButton = new Button {
-    mnemonicParsing = true
+  private[this] val exitButton = new WelcomeScreenButton {
     text = "_Exit BudgetFree..."
     tooltip = "Exit BudgetFree"
     onAction = _ => {
       logger.debug("Exit BudgetFree called")
       Main.conditionallyClose()
     }
-    minWidth = buttonWidth
-    style = buttonStyle
-    effect = new DropShadow()
   }
 
   root = new BorderPane {
@@ -109,7 +98,7 @@ private[ui] class WelcomeScreenScene extends Scene with Logging {
     center = new VBox {
       spacing = 20
       alignment = Pos.Center
-      children = Seq(imageView, overviewButton, blankLabel, openProjectButton, newProjectButton, blankLabel, aboutButton, exitButton)
+      children = Seq(imageView, overviewButton, blankLabel, openProjectButton, blankLabel, aboutButton, exitButton)
     }
   }
 

@@ -24,6 +24,7 @@ package budgetfree
 
 import budgetfree.constants._
 import budgetfree.exceptional.{FailQuietly, ValidationException}
+import budgetfree.ui.fxext.AppModalAlert
 import grizzled.slf4j.Logging
 
 import scala.reflect.ClassTag
@@ -31,10 +32,9 @@ import scala.reflect.runtime.{universe => ru}
 import scala.util.control.NonFatal
 import scala.util.{Failure, Try}
 import scalafx.scene.control.Alert.AlertType
-import scalafx.scene.control.{Alert, ButtonBar, ButtonType, Label}
+import scalafx.scene.control.{ButtonBar, ButtonType, Label}
 import scalafx.scene.image.{Image, ImageView}
 import scalafx.scene.paint.Color
-import scalafx.stage.Modality.ApplicationModal
 
 package object ui extends Logging {
 
@@ -103,15 +103,11 @@ package object ui extends Logging {
   }
 
   private[ui] def errorDialog = (msg: String) => {
-    new Alert(AlertType.Error) {
-      initOwner(Main.stage)
-      initModality(ApplicationModal)
-      title = ApplicationName
+    new AppModalAlert(AlertType.Error) {
       buttonTypes = Seq(Close)
       headerText = s"$ApplicationName Error"
       contentText = msg
       dialogPane().setPrefSize(375, 200) // I tried setting the width/height values and the width didn't work.
-      resizable = true
     }.showAndWait()
   }
 
