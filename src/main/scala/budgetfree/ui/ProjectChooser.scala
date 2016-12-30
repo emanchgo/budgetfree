@@ -60,7 +60,11 @@ private[ui] class ProjectChooser private extends Dialog[String] with Logging {
 
   resultConverter = dialogButton => {
     if(dialogButton == Open) {
-      projectChoices.selectionModel().getSelectedItem
+      val selected: String = projectChoices.selectionModel().getSelectedItem
+      selected match {
+        case NewProjectString => "" // Empty String means create a new project!
+        case _ => selected
+      }
     }
     else {
       null

@@ -76,7 +76,15 @@ private[ui] class WelcomeScreenScene extends Scene with Logging {
       logger.debug("Open existing project called")
       ProjectChooser().foreach { chooser =>
         val result = chooser.showAndWait().asInstanceOf[Option[String]]
-        logger.debug(s"Selected project: $result")
+        result match {
+          case Some("") =>
+            logger.debug("Selected new project!")
+          case Some(projectName) =>
+            logger.debug(s"Selected project: $projectName")
+            Main.openProject(projectName)
+          case None =>
+            logger.debug("No project selected!")
+        }
       }
       //Main.changeScene()
     }

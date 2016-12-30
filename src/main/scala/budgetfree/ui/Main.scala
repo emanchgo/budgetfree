@@ -77,9 +77,9 @@ private[ui] object Main extends JFXApp with Logging {
     }
   }
 
-  def changeScene(): Unit = {
-    stage.scene = new ActiveProjectScene
-    stage.delegate.setMaximized(true)
+  def openProject(projectName: String): Unit = {
+//    stage.scene = new ActiveProjectScene
+//    stage.delegate.setMaximized(true)
   }
 
   def showHelpAboutDialog() {
