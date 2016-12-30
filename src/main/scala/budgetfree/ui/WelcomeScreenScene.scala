@@ -23,6 +23,8 @@
 
 package budgetfree.ui
 
+import java.nio.file.Path
+
 import budgetfree.ui.fxext.AppModalAlert
 import grizzled.slf4j.Logging
 
@@ -72,7 +74,11 @@ private[ui] class WelcomeScreenScene extends Scene with Logging {
     tooltip = "Open an existing BudgetFree Project"
     onAction = { _ =>
       logger.debug("Open existing project called")
-      Main.changeScene()
+      ProjectChooser().foreach { chooser =>
+        val result = chooser.showAndWait().asInstanceOf[Option[String]]
+        logger.debug(s"Selected project: $result")
+      }
+      //Main.changeScene()
     }
   }
 

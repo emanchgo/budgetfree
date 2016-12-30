@@ -56,12 +56,12 @@ package object ui extends Logging {
 
   private[ui] object ButtonTypes {
 //    val Add = new ButtonType("_Add", ButtonBar.ButtonData.OKDone)
-//    val Cancel = new ButtonType("_Cancel", ButtonBar.ButtonData.CancelClose)
+    val Cancel = new ButtonType("_Cancel", ButtonBar.ButtonData.CancelClose)
     val Close = new ButtonType("_Close", ButtonBar.ButtonData.OKDone)
 //    val Finish = new ButtonType("F_inish", ButtonBar.ButtonData.Finish)
     val Ok = new ButtonType("_OK")
     val No = new ButtonType("_No", ButtonBar.ButtonData.CancelClose)
-//    val Open = new ButtonType("_Open")
+    val Open = new ButtonType("_Open")
 //    val Update = new ButtonType("_Update", ButtonBar.ButtonData.CancelClose)
     val Yes = new ButtonType("_Yes")
   }
