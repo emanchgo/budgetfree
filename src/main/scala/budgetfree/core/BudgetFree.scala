@@ -40,7 +40,14 @@ object BudgetFree {
     }
   }
 
+  def apply(projectName: String): Try[BudgetFree] = Try(new BudgetFree(projectName))
+
   def shutdown(): Try[Unit] = Try {
 
   }
+}
+
+final class BudgetFree private(val projectName: String) {
+
+  override def toString: String = projectName
 }

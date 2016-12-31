@@ -23,8 +23,7 @@
 
 package budgetfree.ui
 
-import java.nio.file.Path
-
+import budgetfree.core.BudgetFree
 import budgetfree.ui.fxext.AppModalAlert
 import grizzled.slf4j.Logging
 
@@ -32,28 +31,23 @@ import scalafx.application.Platform
 import scalafx.geometry.{Insets, Pos}
 import scalafx.scene.Scene
 import scalafx.scene.control.Alert.AlertType
-import scalafx.scene.control.Button
-import scalafx.scene.effect.DropShadow
+import scalafx.scene.control.{Button, TextInputDialog}
 import scalafx.scene.image.ImageView
 import scalafx.scene.layout._
 import scalafx.scene.paint.Color
 
-private[ui] object WelcomeScreenScene {
-
-  val buttonWidth: Double = 250
-  val buttonStyle = "-fx-font-size: 1.15em; -fx-text-fill: #000000; -fx-border-style: solid; -fx-border-width: 1; -fx-border-color: #000000; -fx-border-radius: 5 5 5 5; "
+private[ui] object WelcomeScene {
 
   abstract class WelcomeScreenButton extends Button {
     mnemonicParsing = true
-    minWidth = buttonWidth
-    style = buttonStyle
-    effect = new DropShadow
+    minWidth = 200
+    defaultButton <== focused
   }
 }
 
-private[ui] class WelcomeScreenScene extends Scene with Logging {
+private[ui] class WelcomeScene extends Scene with Logging {
 
-  import WelcomeScreenScene._
+  import WelcomeScene._
 
   val imageView = new ImageView(ApplicationIconImage96)
 
@@ -78,7 +72,14 @@ private[ui] class WelcomeScreenScene extends Scene with Logging {
         val result = chooser.showAndWait().asInstanceOf[Option[String]]
         result match {
           case Some("") =>
-            logger.debug("Selected new project!")
+            new TextInputDialog() {
+              title = "BudgetFree"
+              headerText = "Create new BudgetFree Project"
+              contentText = "Enter the new project name:"
+            }.showAndWait().foreach { projectName =>
+              errorDialogIntercept(BudgetFree(projectName))
+              logger.debug(s"Created new project: $projectName")
+            }
           case Some(projectName) =>
             logger.debug(s"Selected project: $projectName")
             Main.openProject(projectName)

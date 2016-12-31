@@ -22,7 +22,7 @@
 
 package budgetfree.ui
 
-import budgetfree.constants.{ApplicationName, ApplicationVersion}
+import budgetfree.constants.ApplicationVersion
 import budgetfree.ui.ButtonTypes._
 import budgetfree.ui.fxext.AppModalAlert
 
@@ -30,14 +30,10 @@ import scala.io.Source
 import scalafx.Includes._
 import scalafx.event.ActionEvent
 import scalafx.scene.control.Alert.AlertType
-import scalafx.scene.control.{Alert, _}
+import scalafx.scene.control._
 import scalafx.scene.layout.VBox
-import scalafx.stage.Modality._
 
-private[ui] class HelpAboutDialog extends Alert(AlertType.Information) {
-  title = ApplicationName
-  initOwner(Main.stage)
-  initModality(ApplicationModal)
+private[ui] class HelpAboutDialog extends AppModalAlert(AlertType.Information) {
   graphic = ApplicationIconImageView
   headerText = "About BudgetFree"
 
@@ -97,8 +93,7 @@ private[ui] class HelpAboutDialog extends Alert(AlertType.Information) {
   dialogPane().content = theContent
   buttonTypes = Seq(Ok)
   // Linux workaround
-  resizable = true
+  //resizable = true
   //dialogPane().setPrefSize(600, 400) // I tried setting the width/height values and the width didn't work.
-  resizable = false
-
+  //resizable = false
 }

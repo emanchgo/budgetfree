@@ -1,4 +1,4 @@
-===============================================================================
+===========================================================
 
 IANAL DISCLAIMER:
 
@@ -22,7 +22,7 @@ this application.
 THIS APPLICATION INCLUDES SEVERAL OPEN-SOURCE LIBRARIES. LICENSING
 INFORMATION FOLLOWS.
 
-===============================================================================
+===========================================================
 
 SLF4J: Simple Logging Facade for Java.
 
@@ -48,7 +48,7 @@ LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
 OF CONTRACT, TORT OR OTHERWISE,  ARISING FROM, OUT OF OR IN CONNECTION
 WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-===============================================================================
+===========================================================
 
 SCALAFX
 
@@ -95,7 +95,7 @@ ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-===============================================================================
+===========================================================
 
 GRIZZLED SLF4J
 
@@ -131,7 +131,7 @@ CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
 ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 POSSIBILITY OF SUCH DAMAGE.
 
-===============================================================================
+===========================================================
 
 AKKA
 
@@ -160,7 +160,7 @@ akka-protobuf contains the sources of Google protobuf 2.5.0 runtime support,
 moved into the source package `akka.protobuf` so as to avoid version conflicts.
 For license information see COPYING.protobuf
 
-===============================================================================
+===========================================================
 
 SCALACTIC
 
@@ -171,7 +171,8 @@ ScalaTest is free, open-source software released under the Apache 2.0 license.
 
 Copyright © 2009-2016 Artima, Inc. All Rights Reserved.
 
-===============================================================================
+===========================================================
+
 
 SCALATEST
 
@@ -183,7 +184,7 @@ If your company loves ScalaTest, please consider sponsoring the project.
 
 Copyright © 2009-2016 Artima, Inc. All Rights Reserved.
 
-===============================================================================
+===========================================================
 
 ICONS8
 

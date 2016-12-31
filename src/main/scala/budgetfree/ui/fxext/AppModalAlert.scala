@@ -22,6 +22,7 @@
 
 package budgetfree.ui.fxext
 
+
 import budgetfree.constants.ApplicationName
 import budgetfree.ui.Main
 

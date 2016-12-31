@@ -22,30 +22,38 @@
 
 package budgetfree.ui
 
-import javafx.application.Application
+import javafx.application.{Application => JFXApplication}
+import javafx.scene.control.{Button => JFXButton}
+import javafx.scene.input.{KeyCode => JFXKeyCode, KeyEvent => JFXKeyEvent}
 
 import budgetfree.constants.ApplicationName
 import budgetfree.core.BudgetFree
 import budgetfree.ui.ButtonTypes._
 import budgetfree.ui.fxext.AppModalAlert
+import com.sun.javafx.scene.control.behavior.{ButtonBehavior => JFXButtonBehavior, KeyBinding => JFXKeyBinding}
 import grizzled.slf4j.Logging
 
 import scalafx.Includes._
 import scalafx.application.JFXApp.PrimaryStage
 import scalafx.application.{JFXApp, Platform}
 import scalafx.scene.control.Alert.AlertType
-import scalafx.scene.control._
-import scalafx.stage.Modality._
 import scalafx.stage.WindowEvent
 
 private[ui] object Main extends JFXApp with Logging {
 
   System.setProperty("prism.lcdtext", "true")
-  Application.setUserAgentStylesheet(Application.STYLESHEET_MODENA)
+  JFXApplication.setUserAgentStylesheet(JFXApplication.STYLESHEET_MODENA)
 
   Platform.implicitExit = false
 
-  errorDialogIntercept(BudgetFree.startup()).map(_ => showHelpAboutDialog()).recover { case _ => shutdown()}
+  // This code will force buttons to fire when ENTER is pressed.
+  new JFXButtonBehavior[JFXButton](new JFXButton()) {
+    import JFXButtonBehavior._
+    BUTTON_BINDINGS.add(new JFXKeyBinding(JFXKeyCode.ENTER, JFXKeyEvent.KEY_PRESSED, "Press"))
+    BUTTON_BINDINGS.add(new JFXKeyBinding(JFXKeyCode.ENTER, JFXKeyEvent.KEY_RELEASED, "Release"))
+  }
+
+  errorDialogIntercept(BudgetFree.startup()).recover { case _ => shutdown()}
 
   stage = new PrimaryStage {
     title = ApplicationName
@@ -54,7 +62,7 @@ private[ui] object Main extends JFXApp with Logging {
     //delegate.setMaximized(true)
     icons += ApplicationIconImage64
 
-    scene = new WelcomeScreenScene
+    scene = new WelcomeScene
 
     onCloseRequest = (ev: WindowEvent) => {
       logger.debug("user close requested")
