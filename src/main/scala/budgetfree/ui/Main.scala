@@ -109,7 +109,7 @@ private[ui] object Main extends JFXApp with Logging {
 
   def shutdown() {
     errorDialogIntercept(BudgetFree.shutdown())
-    logger.info("Application closing")
+    logger.debug("Application closing")
     Platform.exit()
   }
 }

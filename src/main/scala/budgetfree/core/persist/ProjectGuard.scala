@@ -21,31 +21,38 @@
  */
 
 
-package budgetfree.util
+package budgetfree.core.persist
 
 import java.io.{File, RandomAccessFile}
 import java.nio.channels.FileLock
 
-import budgetfree.constants.ApplicationHomeDir
-import budgetfree.exceptional.FailQuietly
+import budgetfree.constants.ProjectsHomeDir
+import budgetfree.exceptional.SystemError
 import grizzled.slf4j.Logging
 
 import scala.util.{Success, Try}
 
-object AppSingleInstance {
-  def verify: Boolean = new AppSingleInstance().verify
+//ejf-fixMe: move to db impl
+private[persist] object ProjectGuard {
+
+  val lockfileSuffix: String = ".lck"
+
+  def apply(projectName: String): ProjectGuard = new ProjectGuard(projectName)
 }
 
-private[util] class AppSingleInstance extends Logging {
+private[persist] class ProjectGuard private(projectName: String) extends Logging {
 
-  private[this] val file = new File(ApplicationHomeDir, "app.lck")
+  import ProjectGuard._
+
+  private[this] val lockfileName = s"$projectName$lockfileSuffix"
+  private[this] val file = new File(ProjectsHomeDir, lockfileName)
   private[this] val channel = new RandomAccessFile(file, "rw").getChannel
 
-  private[this] val lock: Try[FileLock] = {
-    logger.info(s"Trying to acquire single application instance lock: .${file.getAbsolutePath}")
+  val lock: Try[FileLock] = {
+    logger.debug(s"Trying to acquire single application instance lock: .${file.getAbsolutePath}")
     val lck = channel.tryLock()
     if(lck != null) {
-      logger.info("Acquired single application instance lock.")
+      logger.debug(s"Acquired single application instance lock for project $projectName.")
       Runtime.getRuntime.addShutdownHook(new Thread() {
         override def run() {
           close()
@@ -55,7 +62,7 @@ private[util] class AppSingleInstance extends Logging {
       Success(lck)
     }
     else {
-      FailQuietly
+      SystemError(s"""Another instance of BudgetFree currently has project "$projectName" open.""")
     }
   }
 
@@ -72,10 +79,10 @@ private[util] class AppSingleInstance extends Logging {
 
   private[this] def close() {
     lock.foreach(lck => {
-      logger.info("Releasing lock file.")
+      logger.debug("Releasing lock file.")
       scala.util.Try(lck.release())
     })
-    logger.info("Closing channel.")
+    logger.debug("Closing channel.")
     scala.util.Try(channel.close())
   }
 

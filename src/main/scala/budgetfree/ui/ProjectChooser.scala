@@ -22,6 +22,7 @@
 
 package budgetfree.ui
 import budgetfree.constants._
+import budgetfree.core.BudgetFree
 import budgetfree.ui.ButtonTypes.{Cancel, Open}
 import grizzled.slf4j.Logging
 
@@ -46,8 +47,8 @@ private[ui] class ProjectChooser private extends Dialog[String] with Logging {
   graphic = ApplicationIconImageView
   dialogPane().buttonTypes = Seq(Cancel, Open)
 
-  private[this] val projectDbs = ProjectsHomeDir.listFiles.filter(_.isFile).sorted
-  private[this] val choiceStrings = NewProjectString +: projectDbs.map(_.getName).toList
+  private[this] val projectNames = BudgetFree.listProjectNames
+  private[this] val choiceStrings = NewProjectString +: projectNames.toList
 
   private[this] val projectChoices = new ComboBox[String] {
     items() = ObservableBuffer(choiceStrings: _*)

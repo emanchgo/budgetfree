@@ -23,27 +23,31 @@
 
 package budgetfree.core
 
-import budgetfree.exceptional.ValidationError
-import budgetfree.util.AppSingleInstance
+import budgetfree.core.persist.PersistenceManager
+import grizzled.slf4j.Logging
 
-import scala.util.{Success, Try}
+import scala.util.{Failure, Success, Try}
 
-object BudgetFree {
+object BudgetFree extends Logging {
 
-  def startup(): Try[Unit] = {
+  def startup(): Try[Unit] = Success(Unit)
 
-    if (AppSingleInstance.verify) {
-      Success(Unit)
-    }
-    else {
-      ValidationError("There is already an instance of BudgetFree running.")
-    }
+  def listProjectNames: Seq[String] = PersistenceManager.listProjectNames
+
+  def apply(projectName: String): Try[BudgetFree] = PersistenceManager.openProject(projectName).flatMap { _ =>
+    logger.debug(s"Database for project $projectName successfully opened.")
+    Try(new BudgetFree(projectName))
+  }.recoverWith {
+    case error: Throwable =>
+      logger.error(s"Project with name $projectName could not be initialized. Closing database (if it was open).")
+      PersistenceManager.closeCurrentProject
+      Failure(error)
   }
 
-  def apply(projectName: String): Try[BudgetFree] = Try(new BudgetFree(projectName))
+  def closeCurrentProject(): Try[Unit] = PersistenceManager.closeCurrentProject
 
-  def shutdown(): Try[Unit] = Try {
-
+  def shutdown(): Try[Unit] = PersistenceManager.closeCurrentProject.map { _ =>
+    Unit
   }
 }
 

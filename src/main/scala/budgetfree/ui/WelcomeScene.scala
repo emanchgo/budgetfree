@@ -69,25 +69,19 @@ private[ui] class WelcomeScene extends Scene with Logging {
     onAction = { _ =>
       logger.debug("Open existing project called")
       ProjectChooser().foreach { chooser =>
-        val result = chooser.showAndWait().asInstanceOf[Option[String]]
-        result match {
-          case Some("") =>
-            new TextInputDialog() {
+        val result: Option[String] = chooser.showAndWait().asInstanceOf[Option[String]]
+        result.flatMap {
+          case "" => new TextInputDialog() {
               title = "BudgetFree"
               headerText = "Create new BudgetFree Project"
               contentText = "Enter the new project name:"
-            }.showAndWait().foreach { projectName =>
-              errorDialogIntercept(BudgetFree(projectName))
-              logger.debug(s"Created new project: $projectName")
-            }
-          case Some(projectName) =>
-            logger.debug(s"Selected project: $projectName")
-            Main.openProject(projectName)
-          case None =>
-            logger.debug("No project selected!")
+            }.showAndWait()
+          case _ => result
+        }.fold(logger.debug("No project selected!")) { projectName =>
+          logger.debug(s"Opening project: $projectName")
+          errorDialogIntercept(BudgetFree(projectName))
         }
       }
-      //Main.changeScene()
     }
   }
 
