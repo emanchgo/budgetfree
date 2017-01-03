@@ -28,6 +28,8 @@ import javafx.scene.input.{KeyCode => JFXKeyCode, KeyEvent => JFXKeyEvent}
 
 import budgetfree.constants.ApplicationName
 import budgetfree.core.BudgetFree
+import budgetfree.core.event.Event
+import budgetfree.events.ProjectChanged
 import budgetfree.ui.ButtonTypes._
 import budgetfree.ui.fxext.AppModalAlert
 import com.sun.javafx.scene.control.behavior.{ButtonBehavior => JFXButtonBehavior, KeyBinding => JFXKeyBinding}
@@ -37,6 +39,7 @@ import scalafx.Includes._
 import scalafx.application.JFXApp.PrimaryStage
 import scalafx.application.{JFXApp, Platform}
 import scalafx.scene.control.Alert.AlertType
+import scalafx.scene.Scene
 import scalafx.stage.WindowEvent
 
 private[ui] object Main extends JFXApp with Logging {
@@ -55,7 +58,7 @@ private[ui] object Main extends JFXApp with Logging {
 
   errorDialogIntercept(BudgetFree.startup()).recover { case _ => shutdown()}
 
-  stage = new PrimaryStage {
+  stage = new PrimaryStage with UIEventListener {
     title = ApplicationName
     //    minWidth = 1200
     //    minHeight = 800
@@ -72,6 +75,10 @@ private[ui] object Main extends JFXApp with Logging {
       else {
         ev.consume()
       }
+    }
+
+    def onReceive: PartialFunction[Event, Unit] = {
+      case ProjectChanged(projectName) => projectName.fold[Unit]{scene = new WelcomeScene}{pn => scene = new ActiveProjectScene(pn)}
     }
   }
 

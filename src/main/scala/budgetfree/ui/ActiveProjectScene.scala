@@ -30,7 +30,7 @@ import scalafx.scene.Scene
 import scalafx.scene.control.{Label, SplitPane}
 import scalafx.scene.layout.{BorderPane, VBox}
 
-private[ui] class ActiveProjectScene extends Scene {
+private[ui] class ActiveProjectScene(projectName: String) extends Scene {
 
   // With border panes - last in has priority.
   private[this] val accountPane = new BorderPane {

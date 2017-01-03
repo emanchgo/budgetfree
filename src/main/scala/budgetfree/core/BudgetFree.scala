@@ -23,7 +23,9 @@
 
 package budgetfree.core
 
+import budgetfree.core.event.EventService
 import budgetfree.core.persist.PersistenceManager
+import budgetfree.events.ProjectChanged
 import grizzled.slf4j.Logging
 
 import scala.util.{Failure, Success, Try}
@@ -36,7 +38,9 @@ object BudgetFree extends Logging {
 
   def apply(projectName: String): Try[BudgetFree] = PersistenceManager.openProject(projectName).flatMap { _ =>
     logger.debug(s"Database for project $projectName successfully opened.")
-    Try(new BudgetFree(projectName))
+    val result = Try(new BudgetFree(projectName))
+    result.foreach(_ => EventService.publish(ProjectChanged(Some(projectName))))
+    result
   }.recoverWith {
     case error: Throwable =>
       logger.error(s"Project with name $projectName could not be initialized. Closing database (if it was open).")
