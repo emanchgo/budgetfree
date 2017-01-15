@@ -32,7 +32,8 @@ import grizzled.slf4j.Logging
 
 import scala.util.{Success, Try}
 
-//ejf-fixMe: move to db impl
+//ejf-fixMe: move to db impl, as this is specific to sqlite.
+//ejf-fixMe: explore opening a db by more than one process ... if it fails, this can go away.
 private[persist] object ProjectGuard {
 
   val lockfileSuffix: String = ".lck"
