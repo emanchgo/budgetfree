@@ -1,4 +1,4 @@
-package budgetfree.core
+package trove.core
 
 package object event {
   

@@ -1,30 +1,30 @@
 /*
- *  # BudgetFree
+ *  # Trove
  *
- *  This file is part of BudgetFree - A FREE desktop budgeting application that
+ *  This file is part of Trove - A FREE desktop budgeting application that
  *  helps you track your finances and literally FREES you from complex budgeting.
  *
  *  Copyright © 2016-2017 Eric John Fredericks.
  *
- *  BudgetFree is free software: you can redistribute it and/or modify
+ *  Trove is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
  *
- *  BudgetFree is distributed in the hope that it will be useful,
+ *  Trove is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with BudgetFree.  If not, see <http://www.gnu.org/licenses/>.
+ *  along with Trove.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 
-package budgetfree.ui
+package trove.ui
 
-import budgetfree.core.BudgetFree
-import budgetfree.ui.fxext.AppModalAlert
+import trove.core.Trove
+import trove.ui.fxext.AppModalAlert
 import grizzled.slf4j.Logging
 
 import scalafx.application.Platform
@@ -52,12 +52,12 @@ private[ui] class WelcomeScene extends Scene with Logging {
   val imageView = new ImageView(ApplicationIconImage96)
 
   private[this] val overviewButton = new WelcomeScreenButton {
-    text = "_BudgetFree Overview..."
-    tooltip = "Display an overview of BudgetFree"
+    text = "_Trove Overview..."
+    tooltip = "Display an overview of Trove"
     onAction = _ => {
-      logger.debug("BudgetFree overview called")
+      logger.debug("Trove overview called")
       new AppModalAlert(AlertType.Information) {
-        headerText = "BudgetFree Overview"
+        headerText = "Trove Overview"
         contentText = "OVERVIEW TEXT HERE"
       }.showAndWait()
     }
@@ -65,37 +65,37 @@ private[ui] class WelcomeScene extends Scene with Logging {
 
   private[this] val openProjectButton = new WelcomeScreenButton {
     text = "_Open / Create Project..."
-    tooltip = "Open an existing BudgetFree Project"
+    tooltip = "Open an existing Trove Project"
     onAction = { _ =>
       logger.debug("Open existing project called")
       ProjectChooser().foreach { chooser =>
         val result: Option[String] = chooser.showAndWait().asInstanceOf[Option[String]]
         result.flatMap {
           case "" => new TextInputDialog() {
-              title = "BudgetFree"
-              headerText = "Create new BudgetFree Project"
+              title = "Trove"
+              headerText = "Create new Trove Project"
               contentText = "Enter the new project name:"
             }.showAndWait()
           case _ => result
         }.fold(logger.debug("No project selected!")) { projectName =>
           logger.debug(s"Opening project: $projectName")
-          errorDialogIntercept(BudgetFree(projectName))
+          errorDialogIntercept(Trove(projectName))
         }
       }
     }
   }
 
   private[this] val aboutButton = new WelcomeScreenButton {
-    text = "_About BudgetFree..."
-    tooltip = "About BudgetFree"
+    text = "_About Trove..."
+    tooltip = "About Trove"
     onAction = _ => new HelpAboutDialog().showAndWait()
   }
 
   private[this] val exitButton = new WelcomeScreenButton {
-    text = "_Exit BudgetFree..."
-    tooltip = "Exit BudgetFree"
+    text = "_Exit Trove..."
+    tooltip = "Exit Trove"
     onAction = _ => {
-      logger.debug("Exit BudgetFree called")
+      logger.debug("Exit Trove called")
       Main.conditionallyClose()
     }
   }

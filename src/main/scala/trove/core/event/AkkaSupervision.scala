@@ -1,4 +1,4 @@
-package budgetfree.core.event
+package trove.core.event
 
 import akka.actor.SupervisorStrategy.{Resume, Stop}
 import akka.actor.{ActorInitializationException, ActorKilledException, OneForOneStrategy, SupervisorStrategy, SupervisorStrategyConfigurator}

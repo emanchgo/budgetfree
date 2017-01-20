@@ -1,6 +1,6 @@
-package budgetfree.ui
+package trove.ui
 
-import budgetfree.core.event.{Event, EventListener}
+import trove.core.event.{Event, EventListener}
 
 import scalafx.application.Platform
 

@@ -1,4 +1,4 @@
-package budgetfree.core.event
+package trove.core.event
 
 import akka.actor.{Actor, ActorRef, ActorSystem, Props}
 import grizzled.slf4j.Logging
@@ -19,7 +19,7 @@ object EventService extends Logging {
     system.eventStream.publish(UntypedEvent(event))
   }
 
-  def shutdown() {
+  def shutdown(): Unit = {
     logger.debug("Shutting down actor service")
     Await.result(system.terminate(), Duration.Inf)
   }
