@@ -2,7 +2,8 @@
  *  # Trove
  *
  *  This file is part of Trove - A FREE desktop budgeting application that
- *  helps you track your finances and literally FREES you from complex budgeting.
+ *  helps you track your finances, FREES you from complex budgeting, and
+ *  enables you to build your TROVE of savings!
  *
  *  Copyright © 2016-2017 Eric John Fredericks.
  *
@@ -31,6 +32,24 @@ scalaVersion := "2.12.1"
 
 scalacOptions ++= Seq("-deprecation", "-feature")
 
+sourceGenerators in Compile += Def.task {
+  import java.io.File
+  val cp = (dependencyClasspath in Compile).value
+  val s = streams.value
+  val slickDriver = "slick.jdbc.SQLiteProfile"
+  val jdbcDriver = "org.sqlite.JDBC"
+  val dbPath = (baseDirectory in Compile).value + File.separator + "src" + File.separator + "main" + File.separator + "resources" + File.separator + "blankdb.sqlite3"
+  println(s"\nauto-generating Trove Persistence Model...")
+  println(s"  Source DB is: $dbPath")
+  val url = s"jdbc:sqlite:$dbPath"
+  val outputDir = sourceManaged.value.getPath + File.separator + "scala" // place generated files in sbt's managed sources folder
+  val pkg = "trove.core.persist.model"
+  toError((runner in Compile).value.run("slick.codegen.SourceCodeGenerator", cp.files, Array(slickDriver, jdbcDriver, url, outputDir, pkg), s.log))
+  println(s"\n...auto-generated Trove Persistence Model!")
+  val fname = outputDir + File.separator + pkg.replace(".", File.separator) + File.separator + "Tables.scala"
+  Seq(file(fname))
+}.taskValue
+
 // UI
 libraryDependencies ++= Seq(
   "org.scalafx" %% "scalafx" % "8.0.102-R11"
@@ -53,6 +72,17 @@ libraryDependencies ++= Seq(
 libraryDependencies ++= Seq(
   "org.scalactic" %% "scalactic" % "3.0.1",
   "org.scalatest" %% "scalatest" % "3.0.1" % "test"
+)
+
+// Database
+//ejf-fixMe: refactor versions etc.
+//ejf-fixMe: version check
+//ejf-fixMe: add licenseing info
+libraryDependencies ++= Seq(
+  "com.typesafe.slick" %% "slick" % "3.2.0-M2",
+  "com.typesafe.slick" %% "slick-hikaricp" % "3.2.0-M2",
+  "com.typesafe.slick" %% "slick-codegen" % "3.2.0-M2",
+  "org.xerial" % "sqlite-jdbc" % "3.7.2"
 )
 
 fork := true

@@ -2,7 +2,8 @@
  *  # Trove
  *
  *  This file is part of Trove - A FREE desktop budgeting application that
- *  helps you track your finances and literally FREES you from complex budgeting.
+ *  helps you track your finances, FREES you from complex budgeting, and
+ *  enables you to build your TROVE of savings!
  *
  *  Copyright © 2016-2017 Eric John Fredericks.
  *
