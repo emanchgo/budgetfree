@@ -27,20 +27,19 @@ import javafx.application.{Application => JFXApplication}
 import javafx.scene.control.{Button => JFXButton}
 import javafx.scene.input.{KeyCode => JFXKeyCode, KeyEvent => JFXKeyEvent}
 
+import com.sun.javafx.scene.control.behavior.{ButtonBehavior => JFXButtonBehavior, KeyBinding => JFXKeyBinding}
+import grizzled.slf4j.Logging
 import trove.constants.ApplicationName
 import trove.core.Trove
 import trove.core.event.Event
 import trove.events.ProjectChanged
 import trove.ui.ButtonTypes._
 import trove.ui.fxext.AppModalAlert
-import com.sun.javafx.scene.control.behavior.{ButtonBehavior => JFXButtonBehavior, KeyBinding => JFXKeyBinding}
-import grizzled.slf4j.Logging
 
 import scalafx.Includes._
 import scalafx.application.JFXApp.PrimaryStage
 import scalafx.application.{JFXApp, Platform}
 import scalafx.scene.control.Alert.AlertType
-import scalafx.scene.Scene
 import scalafx.stage.WindowEvent
 
 private[ui] object Main extends JFXApp with Logging {

@@ -24,10 +24,10 @@
 
 package trove.core
 
+import grizzled.slf4j.Logging
 import trove.core.event.EventService
 import trove.core.persist.PersistenceManager
 import trove.events.ProjectChanged
-import grizzled.slf4j.Logging
 
 import scala.util.{Failure, Success, Try}
 

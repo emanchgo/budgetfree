@@ -22,10 +22,10 @@
  */
 
 package trove.ui
+import grizzled.slf4j.Logging
 import trove.constants._
 import trove.core.Trove
 import trove.ui.ButtonTypes.{Cancel, Open}
-import grizzled.slf4j.Logging
 
 import scala.util.Try
 import scalafx.Includes._

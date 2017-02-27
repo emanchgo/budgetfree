@@ -24,9 +24,9 @@
 
 package trove.ui
 
+import grizzled.slf4j.Logging
 import trove.core.Trove
 import trove.ui.fxext.AppModalAlert
-import grizzled.slf4j.Logging
 
 import scalafx.application.Platform
 import scalafx.geometry.{Insets, Pos}

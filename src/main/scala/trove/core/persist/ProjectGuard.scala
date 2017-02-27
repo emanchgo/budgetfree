@@ -27,9 +27,9 @@ package trove.core.persist
 import java.io.{File, RandomAccessFile}
 import java.nio.channels.FileLock
 
+import grizzled.slf4j.Logging
 import trove.constants.ProjectsHomeDir
 import trove.exceptional.SystemError
-import grizzled.slf4j.Logging
 
 import scala.util.{Success, Try}
 

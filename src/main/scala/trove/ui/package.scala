@@ -23,10 +23,10 @@
 
 package trove
 
+import grizzled.slf4j.Logging
 import trove.constants._
 import trove.exceptional.{FailQuietly, ValidationException}
 import trove.ui.fxext.AppModalAlert
-import grizzled.slf4j.Logging
 
 import scala.reflect.ClassTag
 import scala.reflect.runtime.{universe => ru}
