@@ -1,7 +1,7 @@
 package trove.core.persist
 
 import slick.jdbc.SQLiteProfile.api._
-import slick.lifted.{ForeignKeyQuery, ProvenShape}
+import slick.lifted.ProvenShape
 import trove.domain.Account
 import trove.domain.AccountTypes._
 
