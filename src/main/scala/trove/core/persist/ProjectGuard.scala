@@ -37,8 +37,7 @@ import scala.util.{Success, Try}
 //ejf-fixMe: explore opening a db by more than one process ... if it fails, this can go away.
 private[persist] object ProjectGuard {
 
-  val lockFileSuffix: String = ".lck"
-  val dbFileSuffix: String = ".sqlite3"
+  val lockfileSuffix: String = ".lck"
 
   def apply(projectName: String): ProjectGuard = new ProjectGuard(projectName)
 }
@@ -47,13 +46,11 @@ private[persist] class ProjectGuard private(projectName: String) extends Logging
 
   import ProjectGuard._
 
-  private[this] val lockfileName = s"$projectName$lockFileSuffix"
+  private[this] val lockfileName = s"$projectName$lockfileSuffix"
   private[this] val file = new File(ProjectsHomeDir, lockfileName)
-  private[this] val dbFileName = s"$projectName$dbFileSuffix"
-  private[this] val dbFile = new File(ProjectsHomeDir, dbFileName)
   private[this] val channel = new RandomAccessFile(file, "rw").getChannel
 
-  val lock: Try[File] = {
+  val lock: Try[FileLock] = {
     logger.debug(s"Trying to acquire single application instance lock: .${file.getAbsolutePath}")
     val lck = channel.tryLock()
     if(lck != null) {
@@ -64,7 +61,7 @@ private[persist] class ProjectGuard private(projectName: String) extends Logging
           deleteFile()
         }
       })
-      Success(dbFile)
+      Success(lck)
     }
     else {
       SystemError(s"""Another instance of Trove currently has project "$projectName" open.""")
