@@ -28,26 +28,34 @@ import java.nio.channels.FileLock
 import grizzled.slf4j.Logging
 import trove.constants.ProjectsHomeDir
 import trove.exceptional.ValidationError
+import slick.jdbc.SQLiteProfile.api._
 
 import scala.util.{Success, Try}
 
 private[core] object PersistenceManager extends Logging {
 
-  val dbSuffix: String = ".sqlite3"
   val validChars: String = "^[a-zA-Z0-9_\\-]*$"
 
-  @volatile private[this] var currentProjectName: Option[String] = None
+  case class ProjectResources(projectName: String, db: Database)
+
+  // The current project contains the project name and the database reference.
+  @volatile private[this] var currentProject: Option[ProjectResources] = None
 
   def listProjectNames: Seq[String] =
-    ProjectsHomeDir.listFiles.filter(_.isFile).map(_.getName).filterNot(_.endsWith(ProjectGuard.lockfileSuffix))
+    ProjectsHomeDir.listFiles.filter(_.isFile).map(_.getName).filterNot(_.endsWith(ProjectGuard.lockFileSuffix))
       .map(_.stripSuffix(dbSuffix)).toSeq.sorted
 
   def openProject(projectName: String): Try[Unit] = {
     if(projectName.matches(validChars)) {
       logger.debug(s"Opening project: $projectName")
       val result: Try[FileLock] = ProjectGuard(projectName).lock
-      result.fold(err => logger.error(s"Error locking project $projectName", err), _ => logger.debug(s"Opened project $projectName"))
-      currentProjectName = result.toOption.map(_ => projectName)
+      result.fold(err => logger.error(s"Error locking project $projectName", err), { _ =>
+        val db: Database = Database.forURL("file:///home/eric/tmp/abc.sqlite3")
+        logger.debug(s"Opened project $projectName")
+        currentProject = Some(ProjectResources(projectName, db))
+        //ejf-fixMe: publish event
+        }
+      )
       result.map(_ => Unit)
     }
     else {
@@ -56,11 +64,16 @@ private[core] object PersistenceManager extends Logging {
   }
 
   def closeCurrentProject: Try[Unit] = {
-    currentProjectName.foreach { projectName =>
+    val (newCurrentProject, closeResult) = currentProject.fold(None, Try(())) { case ProjectResources(projectName, db) =>
       logger.debug(s"Closing project: $projectName")
-      currentProjectName = None
+      val result = Try(db.close())
       logger.debug(s"Project $projectName closed")
+      (None, result)
     }
-    Success(Unit)
+
+    //ejf-fixMe: publish event
+
+    currentProject = newCurrentProject
+    closeResult
   }
 }
