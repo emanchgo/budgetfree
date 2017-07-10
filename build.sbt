@@ -28,42 +28,53 @@ name := "trove"
 
 version := "0.1.0-SNAPSHOT"
 
-scalaVersion := "2.12.1"
+scalaVersion := "2.12.2"
 
 scalacOptions ++= Seq("-deprecation", "-feature")
 
+// Versions
+val akkaVersion          = "2.5.3"
+val grizzledSlf4jVersion = "1.3.1"
+val scalacticVersion     = "3.0.3"
+val scalaFxVersion       = "8.0.102-R11"
+val scalatestVersion     = "3.0.3"
+val slf4jVersion         = "1.7.25"
+val slickVersion         = "3.2.0"
+val sqliteJdbcVersion    = "3.19.3"
+
 // UI
 libraryDependencies ++= Seq(
-  "org.scalafx" %% "scalafx" % "8.0.102-R11"
+  "org.scalafx" %% "scalafx" % scalaFxVersion
 )
 
 // Logging
 libraryDependencies ++= Seq(
-  "org.slf4j" % "slf4j-api" % "1.7.22",
-  "org.slf4j" % "slf4j-simple" % "1.7.22",
-  "org.clapper" %% "grizzled-slf4j" % "1.3.0"
+  "org.slf4j" % "slf4j-api" % slf4jVersion,
+  "org.slf4j" % "slf4j-simple" % slf4jVersion,
+  "org.clapper" %% "grizzled-slf4j" % grizzledSlf4jVersion
 )
 
 // Akka
 libraryDependencies ++= Seq(
-  "com.typesafe.akka" %% "akka-actor" % "2.4.16",
-  "com.typesafe.akka" %% "akka-slf4j" % "2.4.16"
+  "com.typesafe.akka" %% "akka-actor" % akkaVersion,
+  "com.typesafe.akka" %% "akka-slf4j" % akkaVersion
 )
 
-// ScalaTest and Scalactic
+// ScalaTest
 libraryDependencies ++= Seq(
-  "org.scalactic" %% "scalactic" % "3.0.1",
-  "org.scalatest" %% "scalatest" % "3.0.1" % "test"
+  "org.scalatest" %% "scalatest" % scalatestVersion
 )
 
 // Database
-//ejf-fixMe: refactor versions etc.
-//ejf-fixMe: version check
-//ejf-fixMe: add licenseing info
 libraryDependencies ++= Seq(
-  "com.typesafe.slick" %% "slick" % "3.2.0-M2",
-  "com.typesafe.slick" %% "slick-hikaricp" % "3.2.0-M2",
-  "org.xerial" % "sqlite-jdbc" % "3.16.1"
+  "com.typesafe.slick" %% "slick" % slickVersion,
+  "com.typesafe.slick" %% "slick-hikaricp" % slickVersion,
+  "org.xerial" % "sqlite-jdbc" % sqliteJdbcVersion
+)
+
+// Utilities
+libraryDependencies ++= Seq(
+  "org.scalactic" %% "scalactic" % scalacticVersion
 )
 
 fork := true
