@@ -33,34 +33,43 @@ import scala.util.{Success, Try}
 
 private[core] object PersistenceManager extends Logging {
 
-  val dbSuffix: String = ".sqlite3"
-  val validChars: String = "^[a-zA-Z0-9_\\-]*$"
+  val DbSuffix: String = ".sqlite3"
+  val ValidChars: String = "^[a-zA-Z0-9_\\-]*$"
 
-  @volatile private[this] var currentProjectName: Option[String] = None
+  private[this] case class Project(name: String) {
+    def close(): Unit = {
+      ???
+    }
+  }
+
+  @volatile private[this] var currentProject: Option[Project] = None
 
   def listProjectNames: Seq[String] =
     ProjectsHomeDir.listFiles.filter(_.isFile).map(_.getName).filterNot(_.endsWith(ProjectGuard.lockfileSuffix))
-      .map(_.stripSuffix(dbSuffix)).toSeq.sorted
+      .map(_.stripSuffix(DbSuffix)).toSeq.sorted
 
   def openProject(projectName: String): Try[Unit] = {
-    if(projectName.matches(validChars)) {
+    if(projectName.matches(ValidChars)) {
       logger.debug(s"Opening project: $projectName")
-      val result: Try[FileLock] = ProjectGuard(projectName).lock
-      result.fold(err => logger.error(s"Error locking project $projectName", err), _ => logger.debug(s"Opened project $projectName"))
-      currentProjectName = result.toOption.map(_ => projectName)
-      result.map(_ => Unit)
+      //ejf-fixMe: Move ProjectGuard into Project object
+      val lockResult: Try[FileLock] = ProjectGuard(projectName).lock
+      val result: Try[Project] = lockResult.flatMap{ _ => Try(Project(projectName))}
+      result.recover {
+        case e: Exception => logger.error(s"Error locking project $projectName", e)
+      }
+      currentProject = result.toOption
+      result.map { _ =>
+       logger.debug(s"Opened project $projectName")
+        Unit
+      }
     }
     else {
       ValidationError(s"""Invalid project name: "$projectName." Valid characters are US-ASCII alphanumeric characters, '_', and '-'.""")
     }
   }
 
-  def closeCurrentProject: Try[Unit] = {
-    currentProjectName.foreach { projectName =>
-      logger.debug(s"Closing project: $projectName")
-      currentProjectName = None
-      logger.debug(s"Project $projectName closed")
-    }
-    Success(Unit)
+  def closeCurrentProject: Try[Unit] = currentProject.fold[Try[Unit]](Success(Unit)) { project =>
+    currentProject = None
+    Try(project.close())
   }
 }
