@@ -1,6 +1,6 @@
 package trove
 
-import trove.domain.AccountTypes._
+import trove.domain.AccountTypes.AccountType
 
 package object domain {
 

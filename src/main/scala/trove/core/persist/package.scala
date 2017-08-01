@@ -7,6 +7,8 @@ import slick.jdbc.SQLiteProfile.api._
 
 package object persist {
 
+  private[persist] case class DbVersion(version: Int)
+
   val accountTypeMap: Map[AccountType,String] =
     Map(
       Equity -> "Equity",
