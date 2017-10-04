@@ -33,14 +33,14 @@ scalaVersion := "2.12.2"
 scalacOptions ++= Seq("-deprecation", "-feature")
 
 // Versions
-val akkaVersion          = "2.5.3"
+val akkaVersion          = "2.5.6"
 val grizzledSlf4jVersion = "1.3.1"
-val scalacticVersion     = "3.0.3"
+val scalacticVersion     = "3.0.4"
 val scalaFxVersion       = "8.0.102-R11"
-val scalatestVersion     = "3.0.3"
+val scalatestVersion     = "3.0.4"
 val slf4jVersion         = "1.7.25"
-val slickVersion         = "3.2.0"
-val sqliteJdbcVersion    = "3.19.3"
+val slickVersion         = "3.2.1"
+val sqliteJdbcVersion    = "3.20.0"
 
 // UI
 libraryDependencies ++= Seq(
