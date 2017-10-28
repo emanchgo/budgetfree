@@ -23,8 +23,6 @@
 
 package trove.core.persist
 
-import java.nio.channels.FileLock
-
 import grizzled.slf4j.Logging
 import trove.constants.ProjectsHomeDir
 import trove.exceptional.ValidationError
@@ -36,26 +34,27 @@ private[core] object PersistenceManager extends Logging {
   val DbSuffix: String = ".sqlite3"
   val ValidChars: String = "^[a-zA-Z0-9_\\-]*$"
 
-  private[this] case class Project(name: String) {
+  private[this] case class Project(name: String, lock: ProjectLock) {
     def close(): Unit = {
-      ???
+      logger.info(s"Closing project $name")
+      lock.release()
     }
   }
 
   @volatile private[this] var currentProject: Option[Project] = None
 
   def listProjectNames: Seq[String] =
-    ProjectsHomeDir.listFiles.filter(_.isFile).map(_.getName).filterNot(_.endsWith(ProjectGuard.lockfileSuffix))
+    ProjectsHomeDir.listFiles.filter(_.isFile).map(_.getName).filterNot(_.endsWith(ProjectLock.lockfileSuffix))
       .map(_.stripSuffix(DbSuffix)).toSeq.sorted
 
   def openProject(projectName: String): Try[Unit] = {
     if(projectName.matches(ValidChars)) {
       logger.debug(s"Opening project: $projectName")
       //ejf-fixMe: Move ProjectGuard into Project object
-      val lockResult: Try[FileLock] = ProjectGuard(projectName).lock
-      val result: Try[Project] = lockResult.flatMap{ _ => Try(Project(projectName))}
+      val projectLock: Try[ProjectLock] = ProjectLock(projectName) //ejf-fixMe: have to hang on to this for close
+      val result: Try[Project] = projectLock.flatMap{ lock => Try(Project(projectName, lock))}
       result.recover {
-        case e: Exception => logger.error(s"Error locking project $projectName", e)
+        case e: Exception => logger.error(s"Error opening project $projectName", e)
       }
       currentProject = result.toOption
       result.map { _ =>

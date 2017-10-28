@@ -39,7 +39,7 @@ package object trove extends Logging {
     ProjectsHomeDir.mkdirs()
   }
 
-  val monetaryValueFormatter = new DecimalFormat() {
+  val monetaryValueFormatter: DecimalFormat = new DecimalFormat() {
     setMinimumFractionDigits(2)
     setMaximumFractionDigits(2)
   }
