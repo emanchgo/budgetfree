@@ -31,7 +31,7 @@ import grizzled.slf4j.Logging
 import trove.constants.ProjectsHomeDir
 import trove.exceptional.SystemError
 
-import scala.util.{Success, Try}
+import scala.util.{Failure, Success, Try}
 
 //ejf-fixMe: move to db impl, as this is specific to sqlite.
 //ejf-fixMe: explore opening a db by more than one process ... if it fails, this can go away.
@@ -53,7 +53,7 @@ private[persist] class ProjectGuard private(projectName: String) extends Logging
   val lock: Try[FileLock] = {
     logger.debug(s"Trying to acquire single application instance lock: .${file.getAbsolutePath}")
     val lck = channel.tryLock()
-    if(lck != null) {
+    val result = if(lck != null) {
       logger.debug(s"Acquired single application instance lock for project $projectName.")
       Runtime.getRuntime.addShutdownHook(new Thread() {
         override def run() {
@@ -65,6 +65,12 @@ private[persist] class ProjectGuard private(projectName: String) extends Logging
     }
     else {
       SystemError(s"""Another instance of Trove currently has project "$projectName" open.""")
+    }
+
+    result.recoverWith {
+      case e =>
+        Try(channel.close()) // best effort
+        Failure(e)
     }
   }
 
@@ -82,10 +88,14 @@ private[persist] class ProjectGuard private(projectName: String) extends Logging
   private[this] def close() {
     lock.foreach(lck => {
       logger.debug("Releasing lock file.")
-      scala.util.Try(lck.release())
+      scala.util.Try(lck.release()).recover {
+        case e => logger.error("Unable to release file lock", e)
+      }
     })
     logger.debug("Closing channel.")
-    scala.util.Try(channel.close())
+    scala.util.Try(channel.close()).recover {
+      case e => logger.error("Unable to close file channel", e)
+    }
   }
 
   private[this] def deleteFile() {

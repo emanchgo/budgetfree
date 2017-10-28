@@ -62,7 +62,7 @@ libraryDependencies ++= Seq(
 
 // ScalaTest
 libraryDependencies ++= Seq(
-  "org.scalatest" %% "scalatest" % scalatestVersion
+  "org.scalatest" %% "scalatest" % scalatestVersion % "test"
 )
 
 // Database
