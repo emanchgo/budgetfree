@@ -31,7 +31,7 @@ package object exceptional {
     def cause: Option[Throwable]
   }
 
-  abstract class AppException(val message: String, _cause: Option[Throwable]) extends java.lang.Exception(message, _cause.orNull)
+  abstract class AppException(val message: String, _cause: Option[Throwable]) extends scala.Exception(message, _cause.orNull)
     with ExceptionLike {
     override final def cause = Option(getCause)
   }
