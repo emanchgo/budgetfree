@@ -36,7 +36,7 @@ import scalafx.scene.layout.BorderPane
 
 private[ui] object ProjectChooser {
   val NewProjectString = "[ New Project ]"
-  def apply(): Try[ProjectChooser] = errorDialogIntercept(Try(new ProjectChooser()))
+  def apply(): Try[ProjectChooser] = dialogOnError(Try(new ProjectChooser()))
 }
 
 private[ui] class ProjectChooser private extends Dialog[String] with Logging {

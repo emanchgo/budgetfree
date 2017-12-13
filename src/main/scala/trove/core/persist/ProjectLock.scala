@@ -31,90 +31,69 @@ import trove.constants._
 import trove.exceptional.SystemError
 
 import scala.util.control.NonFatal
-import scala.util.{Success, Try}
+import scala.util.{Failure, Success, Try}
 
-// Only useful where the underlying database can be opened by different programs.
+// Only useful where the underlying database can be opened by different programs concurrently.
 private[persist] object ProjectLock {
+
+  private case class Resources(channel: FileChannel, lock: FileLock)
 
   val lockfileSuffix: String = ".lck"
 
-  def apply(projectName: String): Try[ProjectLock] = {
-      val res = new ProjectLock(projectName)
-      res.resources.map(_ => res)
-  }
+  def apply(projectName: String): ProjectLock = new ProjectLock(projectName)
 }
 
 private[persist] class ProjectLock private(projectName: String) extends Logging {
 
   import ProjectLock._
 
-  private[this] case class Resources(raf: RandomAccessFile, channel: FileChannel, lock: FileLock, shutdownHook: Thread)
-
   private[this] val lockfileName = s"$projectName$lockfileSuffix"
   private[this] val file = new File(ProjectsHomeDir, lockfileName)
-  @volatile private var resources: Try[Resources] = {
-    var raf: RandomAccessFile = null
-    var ch: FileChannel = null
-    var lck: FileLock = null
-    var success = false
-    try {
-      logger.debug(s"Trying to acquire single application instance lock: .${file.getAbsolutePath}")
-      raf = new RandomAccessFile(file, "rw")
-      ch = raf.getChannel
-      lck = ch.tryLock()
-      if(lck != null) {
-        success = true
+
+  @volatile private[this] var resources: Option[Resources] = None
+
+  def lock(): Try[Unit] = Try {
+    val channel = new RandomAccessFile(file, "rw").getChannel
+    logger.debug(s"Trying to acquire single application instance lock: .${file.getAbsolutePath}")
+
+    Option(channel.tryLock()).fold[Try[Resources]] {
+      logger.warn(s"Failed to acquire project lock for $projectName (${file.getAbsolutePath})")
+      SystemError(s"""Another instance of $ApplicationName currently has project "$projectName" open.""")
+    } {
+      lock =>
         logger.debug(s"Acquired single application instance lock for project $projectName.")
-        val shutdownHook = new Thread() {
+        val res = Resources(channel, lock)
+        resources = Some(res)
+        Runtime.getRuntime.addShutdownHook(new Thread() {
           override def run() {
-            releaseResources(raf, ch, lck)
+            logError(release())
           }
-        }
-        Runtime.getRuntime.addShutdownHook(shutdownHook)
-        Success(Resources(raf, ch, lck, shutdownHook))
-      }
-      else {
-        SystemError(s"""Another instance of $ApplicationName currently has project "$projectName" open.""")
-      }
+        })
+      Success(res)
     }
-    catch {
-      case NonFatal(e) => SystemError(s"Unable to acquire lock for project $projectName")
-    }
-    finally {
-      if (!success) {
-        releaseResources(raf, ch, lck)
-      }
+  }.flatten.map(_ => ())
+
+  def release(): Try[Unit] = resources.fold[Try[Unit]](SystemError(
+    s"""$ApplicationName is not currently locked by the virtual machine.""")) { res =>
+    close(res.channel, Some(res.lock))
+  }
+
+  private[this] def close(channel: FileChannel, lock: Option[FileLock] = None): Try[Unit] = {
+    lock.fold[Try[Unit]](Success(())) { lck =>
+      logger.debug("Releasing lock file.")
+      Try(lck.release())
+    }.map { _ =>
+      logger.debug("Closing channel.")
+      channel.close()
+    }.map { _ =>
+      logger.debug("Deleting lock file.")
+      file.delete()
     }
   }
 
-  def release(): Unit = this.synchronized {
-    resources.map {
-      case Resources(raf, ch, lck, hook) =>
-        if(Runtime.getRuntime.removeShutdownHook(hook)) {
-          logger.debug("removed shutdown hook")
-        }
-        else {
-          logger.debug("unable to remove shutdown hook")
-        }
-        releaseResources(raf, ch, lck)
-        SystemError("Lock has been released")
-    }
-  }
-
-  private[this] def releaseResources(raf: RandomAccessFile, ch: FileChannel, lck: FileLock): Unit = {
-    try {
-      logger.debug("releasing lock")
-      if(lck != null) lck.close()
-    }
-    finally {
-      try {
-        logger.debug("closing file channel")
-        if(ch != null) ch.close()
-      }
-      finally {
-        logger.debug("closing file")
-        if(raf != null) raf.close()
-      }
-    }
+  private[this] def logError(result: Try[Unit]): Unit = result match {
+    case Success(_) => // No-op
+    case Failure(NonFatal(e)) => logger.error("Error!", e)
+    case Failure(e) => throw e // Fatal, throw it, bubble it up!
   }
 }

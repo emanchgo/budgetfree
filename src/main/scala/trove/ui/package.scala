@@ -70,7 +70,7 @@ package object ui extends Logging {
 
   import ButtonTypes._
 
-  private[ui] def errorDialogIntercept[A](code: => Try[A]): Try[A] = code match {
+  private[ui] def dialogOnError[A](code: => Try[A]): Try[A] = code match {
 
     case FailQuietly =>
       logger.debug("Failing quietly")

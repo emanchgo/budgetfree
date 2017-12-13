@@ -26,6 +26,7 @@ package trove
 import scala.util.Failure
 
 package object exceptional {
+
   sealed trait ExceptionLike {
     def message: String
     def cause: Option[Throwable]

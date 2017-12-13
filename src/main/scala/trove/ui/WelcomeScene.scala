@@ -80,7 +80,7 @@ private[ui] class WelcomeScene extends Scene with Logging {
           case _ => result
         }.fold(logger.debug("No project selected!")) { projectName =>
           logger.debug(s"Opening project: $projectName")
-          errorDialogIntercept(Trove(projectName))
+          dialogOnError(Trove(projectName))
         }
       }
     }

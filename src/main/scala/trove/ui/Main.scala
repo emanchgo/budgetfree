@@ -56,7 +56,7 @@ private[ui] object Main extends JFXApp with Logging {
     BUTTON_BINDINGS.add(new JFXKeyBinding(JFXKeyCode.ENTER, JFXKeyEvent.KEY_RELEASED, "Release"))
   }
 
-  errorDialogIntercept(Trove.startup()).recover { case _ => shutdown()}
+  dialogOnError(Trove.startup()).recover { case _ => shutdown()}
 
   stage = new PrimaryStage with UIEventListener {
     title = ApplicationName
@@ -110,7 +110,7 @@ private[ui] object Main extends JFXApp with Logging {
   }
 
   def shutdown() {
-    errorDialogIntercept(Trove.shutdown())
+    dialogOnError(Trove.shutdown())
     logger.debug("Application closing")
     Platform.exit()
   }

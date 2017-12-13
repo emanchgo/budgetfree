@@ -50,17 +50,14 @@ private[core] object PersistenceManager extends Logging {
   def openProject(projectName: String): Try[Unit] = {
     if(projectName.matches(ValidChars)) {
       logger.debug(s"Opening project: $projectName")
-      //ejf-fixMe: Move ProjectGuard into Project object
-      val projectLock: Try[ProjectLock] = ProjectLock(projectName) //ejf-fixMe: have to hang on to this for close
-      val result: Try[Project] = projectLock.flatMap{ lock => Try(Project(projectName, lock))}
-      result.recover {
-        case e: Exception => logger.error(s"Error opening project $projectName", e)
+      val projectLock: ProjectLock = ProjectLock(projectName)
+      val lockResult = projectLock.lock()
+      val openResult: Try[Project] = lockResult.flatMap { _ =>
+        Try(Project(projectName, projectLock))
       }
-      currentProject = result.toOption
-      result.map { _ =>
-       logger.debug(s"Opened project $projectName")
-        Unit
-      }
+      currentProject = openResult.toOption
+      currentProject.fold(logger.error(s"Error opening project $projectName"))(_ => logger.info(s"Opened project $projectName"))
+      openResult.map(_ => ())
     }
     else {
       ValidationError(s"""Invalid project name: "$projectName." Valid characters are US-ASCII alphanumeric characters, '_', and '-'.""")
