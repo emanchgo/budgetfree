@@ -24,10 +24,11 @@
 package trove.core.persist
 
 import java.io.File
-import java.nio.channels.FileChannel
+import java.nio.channels.{FileChannel, FileLock}
 
 import org.scalatest.mockito.MockitoSugar
 import org.scalatest.{BeforeAndAfter, FlatSpec, Matchers}
+import org.mockito.Mockito.when
 import trove.constants._
 
 import scala.util.{Success, Try}
@@ -36,8 +37,12 @@ class ProjectLockSpec extends FlatSpec with MockitoSugar with BeforeAndAfter wit
 
   import ProjectLock._
 
+  val userHome: String = System.getProperty("user.home")
   val projectName = "unittest"
   val actualFile = new File(ProjectsHomeDir, constructLockfileName(projectName))
+  val separator: String = File.separator
+  val expectedDirectory = new File(s"$userHome$separator.trove${separator}projects")
+  val expectedFilename = s"$projectName${ProjectLock.lockfileSuffix}"
 
   after {
     if(actualFile.exists()) {
@@ -52,6 +57,8 @@ class ProjectLockSpec extends FlatSpec with MockitoSugar with BeforeAndAfter wit
 
     var mockChannelsCreated: List[(File, String)] = List.empty
     val mockChannel: FileChannel = mock[FileChannel]
+
+    val mockLock: FileLock = mock[FileLock]
 
     var shutdownHooksAdded: List[Thread] = List.empty
     var shutdownHooksRemoved: List[Thread] = List.empty
@@ -78,9 +85,9 @@ class ProjectLockSpec extends FlatSpec with MockitoSugar with BeforeAndAfter wit
   }
 
   "ProjectLock" should "construct new file channel when lock is called" in new Fixture {
+    when(mockChannel.tryLock()).thenReturn(mockLock)
     lock.lock() shouldBe Success(())
-    mockFilesCreated should contain theSameElementsAs List.empty
-
+    mockFilesCreated should contain theSameElementsAs List((expectedDirectory, expectedFilename))
   }
 
   it should "return SystemError if it cannot acquire lock" in new Fixture {
