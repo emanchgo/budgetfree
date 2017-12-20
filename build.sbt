@@ -35,12 +35,14 @@ scalacOptions ++= Seq("-deprecation", "-feature")
 // Versions
 val akkaVersion          = "2.5.6"
 val grizzledSlf4jVersion = "1.3.1"
-val scalacticVersion     = "3.0.4"
 val scalaFxVersion       = "8.0.102-R11"
-val scalatestVersion     = "3.0.4"
 val slf4jVersion         = "1.7.25"
 val slickVersion         = "3.2.1"
 val sqliteJdbcVersion    = "3.20.0"
+
+val mockitoVersion       = "2.13.0"
+val scalacticVersion     = "3.0.4"
+val scalatestVersion     = "3.0.4"
 
 // UI
 libraryDependencies ++= Seq(
@@ -62,7 +64,8 @@ libraryDependencies ++= Seq(
 
 // ScalaTest
 libraryDependencies ++= Seq(
-  "org.scalatest" %% "scalatest" % scalatestVersion % "test"
+  "org.scalatest" %% "scalatest" % scalatestVersion % Test,
+  "org.mockito" % "mockito-core" % mockitoVersion % Test
 )
 
 // Database
