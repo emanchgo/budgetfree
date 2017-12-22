@@ -77,18 +77,18 @@ private[persist] class ProjectLock(projectName: String) extends Logging { self: 
 
     val channel = newChannel(file, "rw")
 
-    var exceptionThrown = true
-    val lockTryResult: FileLock = try {
-      val l = channel.tryLock()
-      exceptionThrown = false
-      l
+    var tryLockSuccess = false
+    var tryLockResult: FileLock = null
+    try {
+      tryLockResult = channel.tryLock()
+      tryLockSuccess = true
     } finally {
-      if(exceptionThrown) {
+      if(!tryLockSuccess || tryLockResult == null) {
         close(channel)
       }
     }
 
-    Option(lockTryResult).fold[Try[Resources]] {
+    Option(tryLockResult).fold[Try[Resources]] {
       logger.warn(s"Failed to acquire project lock for $projectName (${file.getAbsolutePath})")
       SystemError(s"""Another instance of $ApplicationName currently has project "$projectName" open.""")
     } {
@@ -113,27 +113,18 @@ private[persist] class ProjectLock(projectName: String) extends Logging { self: 
 
   private[this] def close(channel: FileChannel, lock: Option[FileLock] = None, shutdownHook: Option[Thread] = None): Try[Unit] = {
 
-    val result: Try[Unit] = lock.fold[Try[Unit]](Success(())) { lck: FileLock =>
+    val result = lock.fold[Try[Unit]](Success(())) { lck: FileLock =>
       Try(lck.release())
-    }.map { _: Unit =>
-        channel.close()
-    }.map { _: Unit =>
-      file.delete()
     }
 
-    val shutdownHookRemovalResult: Try[Unit] = shutdownHook.fold[Try[Unit]](Success(())) { hook: Thread =>
-      Try(removeShutdownHook(hook))
+    logError(Try(channel.close()))
+    logError(Try(file.delete()))
+
+    shutdownHook.foreach { hook: Thread =>
+      logError(Try(removeShutdownHook(hook)))
     }
 
-    shutdownHookRemovalResult match {
-      case Success(_) => result
-      case Failure(_) => result match {
-        case Success(_) => shutdownHookRemovalResult
-        case Failure(_) =>
-          logError(shutdownHookRemovalResult)
-          result
-      }
-    }
+    result
   }
 
 }
