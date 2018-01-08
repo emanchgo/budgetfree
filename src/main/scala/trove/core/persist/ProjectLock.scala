@@ -22,10 +22,11 @@
  */
 
 package trove.core.persist
-import java.io.{File, RandomAccessFile}
+import java.io.{File, IOException, RandomAccessFile}
 import java.nio.channels.{FileChannel, FileLock}
 
 import grizzled.slf4j.Logging
+import org.omg.CORBA.SystemException
 import trove.constants._
 import trove.core.persist.ProjectLock.EnvironmentOps
 import trove.exceptional.SystemError
@@ -38,24 +39,32 @@ private[persist] object ProjectLock {
 
   val lockfileSuffix: String = ".lck"
 
-  private case class Resources(channel: FileChannel, lock: FileLock, shutdownHook: Thread)
+  private case class Resources(channel: LockableChannel, lock: FileLock, shutdownHook: Thread)
 
   def constructLockfileName(projectName: String): String = s"$projectName$lockfileSuffix"
 
+  //ejf-fixMe: refactor this, move RAF to EnvironmentOps
+  class LockableChannel(file: File) {
+    val channel: FileChannel = new RandomAccessFile(file, "rw").getChannel
+    @throws(clazz = classOf[IOException])
+    def tryLock(): FileLock = channel.tryLock()
+    def close(): Unit = channel.close()
+  }
+
   trait EnvironmentOps {
     def newFile(directory: File, filename: String): File
-    def newChannel(file: File, mode: String): FileChannel
+    def newChannel(file: File, mode: String): LockableChannel
     def addShutdownHook(thread: Thread): Unit
     def removeShutdownHook(thread: Thread): Unit
-    def logError(result: Try[Unit]): Unit
+    def logIfError(result: Try[Unit]): Unit
   }
 
   def apply(projectName: String): ProjectLock = new ProjectLock(projectName) with EnvironmentOps {
     def newFile(directory: File, filename: String): File = new File(directory, filename)
-    def newChannel(file: File, mode: String): FileChannel = new RandomAccessFile(file, "rw").getChannel
+    def newChannel(file: File, mode: String): LockableChannel = new LockableChannel(file)
     def addShutdownHook(hook: Thread): Unit = Runtime.getRuntime.addShutdownHook(hook)
     def removeShutdownHook(hook: Thread): Unit = removeShutdownHook(hook)
-    def logError(result: Try[Unit]): Unit = result match {
+    def logIfError(result: Try[Unit]): Unit = result match {
       case Success(_) => // No-op
       case Failure(NonFatal(e)) => logger.error("Error!", e)
       case Failure(e) => throw e // Fatal, throw it, bubble it up!
@@ -96,7 +105,7 @@ private[persist] class ProjectLock(projectName: String) extends Logging { self: 
         logger.debug(s"Acquired single application instance lock for project $projectName.")
         val shutdownHook = new Thread() {
           override def run() {
-            logError(release())
+            logIfError(release())
           }
         }
         val res = Resources(channel, lock, shutdownHook)
@@ -104,24 +113,27 @@ private[persist] class ProjectLock(projectName: String) extends Logging { self: 
         addShutdownHook(shutdownHook)
       Success(res)
     }
-  }.flatten.map(_ => ())
+  }.flatten.map(_ => ()).recoverWith {
+    case e: SystemException => ???
+    case NonFatal(e) => SystemError("Error acquiring project lock", e)
+  }
 
   def release(): Try[Unit] = resources.fold[Try[Unit]](SystemError(
     s"""$ApplicationName is not currently locked by the virtual machine.""")) { res =>
     close(res.channel, Some(res.lock), Some(res.shutdownHook))
   }
 
-  private[this] def close(channel: FileChannel, lock: Option[FileLock] = None, shutdownHook: Option[Thread] = None): Try[Unit] = {
+  private[this] def close(channel: LockableChannel, lock: Option[FileLock] = None, shutdownHook: Option[Thread] = None): Try[Unit] = {
 
     val result = lock.fold[Try[Unit]](Success(())) { lck: FileLock =>
       Try(lck.release())
     }
 
-    logError(Try(channel.close()))
-    logError(Try(file.delete()))
+    logIfError(Try(channel.close()))
+    logIfError(Try(file.delete()))
 
     shutdownHook.foreach { hook: Thread =>
-      logError(Try(removeShutdownHook(hook)))
+      logIfError(Try(removeShutdownHook(hook)))
     }
 
     result

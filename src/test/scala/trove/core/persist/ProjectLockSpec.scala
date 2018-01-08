@@ -24,7 +24,7 @@
 package trove.core.persist
 
 import java.io.{File, IOException}
-import java.nio.channels.{FileChannel, FileLock}
+import java.nio.channels.FileLock
 
 import org.mockito.Mockito._
 import org.scalatest.mockito.MockitoSugar
@@ -57,7 +57,7 @@ class ProjectLockSpec extends FlatSpec with MockitoSugar with BeforeAndAfter wit
     val mockFile: File = mock[File]
 
     var mockChannelsCreated: List[(File, String)] = List.empty
-    val mockChannel: FileChannel = mock[FileChannel]
+    val mockChannel: LockableChannel = mock[LockableChannel]
 
     val mockLock: FileLock = mock[FileLock]
 
@@ -72,7 +72,7 @@ class ProjectLockSpec extends FlatSpec with MockitoSugar with BeforeAndAfter wit
         mockFile
       }
 
-      def newChannel(file: File, mode: String): FileChannel = {
+      def newChannel(file: File, mode: String): LockableChannel = {
         mockChannelsCreated = (file, mode) +: mockChannelsCreated
         mockChannel
       }
@@ -81,7 +81,7 @@ class ProjectLockSpec extends FlatSpec with MockitoSugar with BeforeAndAfter wit
 
       def removeShutdownHook(thread: Thread): Unit = shutdownHooksRemoved = thread +: shutdownHooksRemoved
 
-      def logError(result: Try[Unit]): Unit = logErrorArgs = result +: logErrorArgs
+      def logIfError(result: Try[Unit]): Unit = logErrorArgs = result +: logErrorArgs
     }
   }
 
@@ -103,7 +103,7 @@ class ProjectLockSpec extends FlatSpec with MockitoSugar with BeforeAndAfter wit
   }
 
   it should "return SystemError and not allocate resources if it cannot acquire lock (tryLock returns null)" in new Fixture {
-    val result = lock.lock()
+    val result: Try[Unit] = lock.lock()
     result shouldBe Failure(_: SystemException)
     mockFilesCreated should contain theSameElementsAs List((expectedDirectory, expectedFilename))
     mockChannelsCreated should contain theSameElementsAs List((mockFile, "rw"))
@@ -111,15 +111,23 @@ class ProjectLockSpec extends FlatSpec with MockitoSugar with BeforeAndAfter wit
     verify(mockChannel, times(1)).close()
     shutdownHooksAdded shouldBe empty
     shutdownHooksRemoved shouldBe empty
-    logErrorArgs shouldBe empty
+    logErrorArgs shouldBe List(Success(),Success()) // should be called twice, because it's a wrapper
     verify(mockFile, times(1)).delete()
     verifyNoMoreInteractions(mockChannel, mockLock)
   }
 
   it should "return SystemError and not allocate resources if an exception is thrown while it is trying to acquire lock" in new Fixture {
-    when(mockChannel.lock()).thenThrow(new IOException("doom"))
-    lock.lock() shouldBe Failure(_: IOException)
-    fail("implementation ongoing")
+    when(mockChannel.tryLock()).thenThrow(new IOException("doom"))
+    lock.lock() shouldBe Failure(_: SystemException)
+    mockFilesCreated should contain theSameElementsAs List((expectedDirectory, expectedFilename))
+    mockChannelsCreated should contain theSameElementsAs List((mockFile, "rw"))
+    verify(mockChannel, times(1)).tryLock()
+    verify(mockChannel, times(1)).close()
+    shutdownHooksAdded shouldBe empty
+    shutdownHooksRemoved shouldBe empty
+    logErrorArgs shouldBe List(Success(),Success()) // should be called twice, because it's a wrapper
+    verify(mockFile, times(1)).delete()
+    verifyNoMoreInteractions(mockChannel, mockLock)
   }
 
   it should "close channel if an exception is thrown while it is trying to acquire lock" in new Fixture {
