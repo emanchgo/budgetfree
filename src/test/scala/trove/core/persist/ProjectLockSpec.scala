@@ -45,6 +45,8 @@ class ProjectLockSpec extends FlatSpec with MockitoSugar with BeforeAndAfter wit
   val expectedDirectory = new File(s"$userHome$separator.trove${separator}projects")
   val expectedFilename = s"$projectName${ProjectLock.lockfileSuffix}"
 
+  val UnitSuccess: Success[Unit] = Success(())
+
   after {
     if(actualFile.exists()) {
       actualFile.deleteOnExit()
@@ -65,6 +67,8 @@ class ProjectLockSpec extends FlatSpec with MockitoSugar with BeforeAndAfter wit
     var shutdownHooksRemoved: List[Thread] = List.empty
     var logErrorArgs: List[Try[Unit]] = List.empty
 
+    val throwExceptionOnAddShutdownHook = false
+
     val lock: ProjectLock = new ProjectLock(projectName) with EnvironmentOps {
 
       def newFile(directory: File, filename: String): File = {
@@ -77,7 +81,11 @@ class ProjectLockSpec extends FlatSpec with MockitoSugar with BeforeAndAfter wit
         mockChannel
       }
 
-      def addShutdownHook(thread: Thread): Unit = shutdownHooksAdded = thread +: shutdownHooksAdded
+      def addShutdownHook(thread: Thread): Unit = if(throwExceptionOnAddShutdownHook) {
+        throw new Exception("doom")
+      } else {
+        shutdownHooksAdded = thread +: shutdownHooksAdded
+      }
 
       def removeShutdownHook(thread: Thread): Unit = shutdownHooksRemoved = thread +: shutdownHooksRemoved
 
@@ -88,7 +96,7 @@ class ProjectLockSpec extends FlatSpec with MockitoSugar with BeforeAndAfter wit
   "ProjectLock" should "allocate resources and add shutdown hook when lock is called" in new Fixture {
     when(mockChannel.tryLock()).thenReturn(mockLock)
 
-    lock.lock() shouldBe Success(())
+    lock.lock() shouldBe UnitSuccess
 
     mockFilesCreated should contain theSameElementsAs List((expectedDirectory, expectedFilename))
     mockChannelsCreated should contain theSameElementsAs List((mockFile, "rw"))
@@ -111,30 +119,44 @@ class ProjectLockSpec extends FlatSpec with MockitoSugar with BeforeAndAfter wit
     verify(mockChannel, times(1)).close()
     shutdownHooksAdded shouldBe empty
     shutdownHooksRemoved shouldBe empty
-    logErrorArgs shouldBe List(Success(),Success()) // should be called twice, because it's a wrapper
-    verify(mockFile, times(1)).delete()
+    logErrorArgs shouldBe List(UnitSuccess) // should be called twice, because it's a wrapper
+    verify(mockFile, never()).delete()
     verifyNoMoreInteractions(mockChannel, mockLock)
   }
 
-  it should "return SystemError and not allocate resources if an exception is thrown while it is trying to acquire lock" in new Fixture {
+  it should "return SystemError, close the channel, and not allocate resources if an exception is thrown while it is trying to acquire lock" in new Fixture {
     when(mockChannel.tryLock()).thenThrow(new IOException("doom"))
-    lock.lock() shouldBe Failure(_: SystemException)
+    val result: Try[Unit] = lock.lock()
+    result shouldBe Failure(_: SystemException)
     mockFilesCreated should contain theSameElementsAs List((expectedDirectory, expectedFilename))
     mockChannelsCreated should contain theSameElementsAs List((mockFile, "rw"))
     verify(mockChannel, times(1)).tryLock()
     verify(mockChannel, times(1)).close()
     shutdownHooksAdded shouldBe empty
     shutdownHooksRemoved shouldBe empty
-    logErrorArgs shouldBe List(Success(),Success()) // should be called twice, because it's a wrapper
+    logErrorArgs shouldBe List(UnitSuccess) // should be called twice, because it's a wrapper
+    verify(mockFile, never()).delete()
+  }
+
+
+  it should "return failure and release all resources if an exception is thrown while it is trying to add shutdown hook" in new Fixture {
+    override val throwExceptionOnAddShutdownHook: Boolean = true
+    when(mockChannel.tryLock()).thenReturn(mockLock)
+    val result: Try[Unit] = lock.lock()
+    result shouldBe Failure(_: SystemException)
+    mockFilesCreated should contain theSameElementsAs List((expectedDirectory, expectedFilename))
+    mockChannelsCreated should contain theSameElementsAs List((mockFile, "rw"))
+
+    verify(mockChannel, times(1)).tryLock()
+    shutdownHooksAdded shouldBe empty
+    //shutdownHooksRemoved should not be empty // actually, Java is OK if we try to remove something we didn't add, so this is not needed
+    logErrorArgs shouldBe List(UnitSuccess, UnitSuccess, UnitSuccess)
+    verify(mockChannel, times(1)).close()
+    verify(mockLock, times(1)).close()
+
     verify(mockFile, times(1)).delete()
     verifyNoMoreInteractions(mockChannel, mockLock)
   }
-
-  it should "close channel if an exception is thrown while it is trying to acquire lock" in new Fixture {
-    fail("not yet implemented")
-  }
-
-  it should "return failure and release all resources if an exception is thrown while it is trying to add shutdown hook"
 
 
   it should "release resources, remove shutdown hook, and delete file when release is called" in new Fixture {

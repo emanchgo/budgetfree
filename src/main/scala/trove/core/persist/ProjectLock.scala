@@ -63,7 +63,7 @@ private[persist] object ProjectLock {
     def newFile(directory: File, filename: String): File = new File(directory, filename)
     def newChannel(file: File, mode: String): LockableChannel = new LockableChannel(file)
     def addShutdownHook(hook: Thread): Unit = Runtime.getRuntime.addShutdownHook(hook)
-    def removeShutdownHook(hook: Thread): Unit = removeShutdownHook(hook)
+    def removeShutdownHook(hook: Thread): Unit = Runtime.getRuntime.removeShutdownHook(hook)
     def logIfError(result: Try[Unit]): Unit = result match {
       case Success(_) => // No-op
       case Failure(NonFatal(e)) => logger.error("Error!", e)
@@ -93,7 +93,7 @@ private[persist] class ProjectLock(projectName: String) extends Logging { self: 
       tryLockSuccess = true
     } finally {
       if(!tryLockSuccess || tryLockResult == null) {
-        close(channel)
+        close(channel = channel)
       }
     }
 
@@ -114,23 +114,28 @@ private[persist] class ProjectLock(projectName: String) extends Logging { self: 
       Success(res)
     }
   }.flatten.map(_ => ()).recoverWith {
-    case e: SystemException => ???
+    case e: SystemException => Failure(e)
     case NonFatal(e) => SystemError("Error acquiring project lock", e)
+  }.recoverWith {
+    case e =>
+      release()
+      Failure(e)
   }
 
   def release(): Try[Unit] = resources.fold[Try[Unit]](SystemError(
     s"""$ApplicationName is not currently locked by the virtual machine.""")) { res =>
-    close(res.channel, Some(res.lock), Some(res.shutdownHook))
+    close(res.channel, Some(res.lock), Some(res.shutdownHook), Some(file))
   }
 
-  private[this] def close(channel: LockableChannel, lock: Option[FileLock] = None, shutdownHook: Option[Thread] = None): Try[Unit] = {
+  private[this] def close(channel: LockableChannel, lock: Option[FileLock] = None, shutdownHook: Option[Thread] = None,
+                          file: Option[File] = None): Try[Unit] = {
 
     val result = lock.fold[Try[Unit]](Success(())) { lck: FileLock =>
       Try(lck.release())
     }
 
     logIfError(Try(channel.close()))
-    logIfError(Try(file.delete()))
+    file.foreach(f => logIfError(Try(f.delete())))
 
     shutdownHook.foreach { hook: Thread =>
       logIfError(Try(removeShutdownHook(hook)))
