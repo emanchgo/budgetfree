@@ -61,7 +61,7 @@ class ProjectLockSpec extends FlatSpec with MockitoSugar with BeforeAndAfter wit
     var mockChannelsCreated: List[(File, String)] = List.empty
     val mockChannel: LockableChannel = mock[LockableChannel]
 
-    val mockLock: FileLock = mock[FileLock]
+    val mockFileLock: FileLock = mock[FileLock]
 
     var shutdownHooksAdded: List[Thread] = List.empty
     var shutdownHooksRemoved: List[Thread] = List.empty
@@ -69,7 +69,7 @@ class ProjectLockSpec extends FlatSpec with MockitoSugar with BeforeAndAfter wit
 
     val throwExceptionOnAddShutdownHook = false
 
-    val lock: ProjectLock = new ProjectLock(projectName) with EnvironmentOps {
+    val projectLock: ProjectLock = new ProjectLock(projectName) with EnvironmentOps {
 
       def newFile(directory: File, filename: String): File = {
         mockFilesCreated = (directory, filename) +: mockFilesCreated
@@ -94,89 +94,115 @@ class ProjectLockSpec extends FlatSpec with MockitoSugar with BeforeAndAfter wit
   }
 
   "ProjectLock" should "allocate resources and add shutdown hook when lock is called" in new Fixture {
-    when(mockChannel.tryLock()).thenReturn(mockLock)
-
-    lock.lock() shouldBe UnitSuccess
+    when(mockChannel.tryLock()).thenReturn(mockFileLock)
+    projectLock.lock() shouldBe UnitSuccess
 
     mockFilesCreated should contain theSameElementsAs List((expectedDirectory, expectedFilename))
     mockChannelsCreated should contain theSameElementsAs List((mockFile, "rw"))
 
     verify(mockChannel, times(1)).tryLock()
     shutdownHooksAdded.size shouldBe 1
-    shutdownHooksRemoved shouldBe empty
-    logErrorArgs shouldBe empty
 
+    verify(mockFileLock, never()).release()
+    verify(mockFileLock, never()).close()
+    verify(mockChannel, never()).close()
     verify(mockFile, never()).delete()
-    verifyNoMoreInteractions(mockChannel, mockLock)
-  }
+    shutdownHooksRemoved shouldBe empty
+
+    logErrorArgs shouldBe empty
+}
 
   it should "return SystemError and not allocate resources if it cannot acquire lock (tryLock returns null)" in new Fixture {
-    val result: Try[Unit] = lock.lock()
+    val result: Try[Unit] = projectLock.lock()
     result shouldBe Failure(_: SystemException)
+
     mockFilesCreated should contain theSameElementsAs List((expectedDirectory, expectedFilename))
     mockChannelsCreated should contain theSameElementsAs List((mockFile, "rw"))
+
     verify(mockChannel, times(1)).tryLock()
-    verify(mockChannel, times(1)).close()
     shutdownHooksAdded shouldBe empty
-    shutdownHooksRemoved shouldBe empty
-    logErrorArgs shouldBe List(UnitSuccess) // should be called twice, because it's a wrapper
+
+    verify(mockFileLock, never()).release()
+    verify(mockFileLock, never()).close()
+
+    verify(mockChannel, times(1)).close()
     verify(mockFile, never()).delete()
-    verifyNoMoreInteractions(mockChannel, mockLock)
+    shutdownHooksRemoved shouldBe empty
+
+    logErrorArgs.foreach(_ shouldBe UnitSuccess)
   }
 
   it should "return SystemError, close the channel, and not allocate resources if an exception is thrown while it is trying to acquire lock" in new Fixture {
+
     when(mockChannel.tryLock()).thenThrow(new IOException("doom"))
-    val result: Try[Unit] = lock.lock()
+    val result: Try[Unit] = projectLock.lock()
     result shouldBe Failure(_: SystemException)
+
     mockFilesCreated should contain theSameElementsAs List((expectedDirectory, expectedFilename))
     mockChannelsCreated should contain theSameElementsAs List((mockFile, "rw"))
+
     verify(mockChannel, times(1)).tryLock()
-    verify(mockChannel, times(1)).close()
     shutdownHooksAdded shouldBe empty
-    shutdownHooksRemoved shouldBe empty
-    logErrorArgs shouldBe List(UnitSuccess) // should be called twice, because it's a wrapper
+
+    verify(mockFileLock, never()).release()
+    verify(mockFileLock, never()).close()
+
+    verify(mockChannel, times(1)).close()
     verify(mockFile, never()).delete()
+    shutdownHooksRemoved shouldBe empty
+
+    logErrorArgs.foreach(_ shouldBe UnitSuccess)
   }
 
 
   it should "return failure and release all resources if an exception is thrown while it is trying to add shutdown hook" in new Fixture {
     override val throwExceptionOnAddShutdownHook: Boolean = true
-    when(mockChannel.tryLock()).thenReturn(mockLock)
-    val result: Try[Unit] = lock.lock()
+    when(mockChannel.tryLock()).thenReturn(mockFileLock)
+    val result: Try[Unit] = projectLock.lock()
     result shouldBe Failure(_: SystemException)
+
     mockFilesCreated should contain theSameElementsAs List((expectedDirectory, expectedFilename))
     mockChannelsCreated should contain theSameElementsAs List((mockFile, "rw"))
 
     verify(mockChannel, times(1)).tryLock()
     shutdownHooksAdded shouldBe empty
-    //shutdownHooksRemoved should not be empty // actually, Java is OK if we try to remove something we didn't add, so this is not needed
-    logErrorArgs shouldBe List(UnitSuccess, UnitSuccess, UnitSuccess)
-    verify(mockChannel, times(1)).close()
-    verify(mockLock, times(1)).close()
 
+    verify(mockFileLock, times(1)).release()
+    verify(mockFileLock, times(1)).close()
+    verify(mockChannel, times(1)).close()
     verify(mockFile, times(1)).delete()
-    verifyNoMoreInteractions(mockChannel, mockLock)
+
+    logErrorArgs.foreach(_ shouldBe UnitSuccess)
   }
 
 
   it should "release resources, remove shutdown hook, and delete file when release is called" in new Fixture {
-    fail("not yet implemented")
-  }
+    when(mockChannel.tryLock()).thenReturn(mockFileLock)
+    projectLock.lock() shouldBe UnitSuccess
 
-  it should "log error when shutdown hook execution experiences an error" in new Fixture {
-    fail("not yet implemented")
-  }
+    projectLock.release()
+    verify(mockFileLock, times(1)).release()
+    verify(mockFileLock, times(1)).close()
+    verify(mockChannel, times(1)).close()
+    verify(mockFile, times(1)).delete()
 
-  it should "not log error when lock owner calls release and there is an exception" in new Fixture {
-    fail("not yet implemented")
-  }
-
-  it should "release resources, remove shutdown hook, and delete file when shutdown hook is called" in new Fixture {
-    fail("not yet implemented")
+    logErrorArgs.foreach(_ shouldBe UnitSuccess)
   }
 
   it should "cleanup all other resources, return failure, and log when exception is thrown when releasing lock" in new Fixture {
-    fail("not yet implemented")
+    when(mockChannel.tryLock()).thenReturn(mockFileLock)
+    projectLock.lock() shouldBe UnitSuccess
+
+    projectLock.release()
+    doThrow(new IOException("doom")).when(mockFileLock).release()
+    verify(mockFileLock, times(1)).release()
+    verify(mockFileLock, times(1)).close()
+    verify(mockChannel, times(1)).close()
+    verify(mockFile, times(1)).delete()
+
+    projectLock.release()
+
+    logErrorArgs.foreach(_ shouldBe UnitSuccess)
   }
 
   it should "cleanup all other resources, return failure, and log when exception is thrown when closing channel" in new Fixture {
@@ -190,5 +216,27 @@ class ProjectLockSpec extends FlatSpec with MockitoSugar with BeforeAndAfter wit
   it should "log error after previously performing other expected cleanup if exception is thrown removing shutdown hook" in new Fixture {
     fail("not yet implemented")
   }
-  
+
+  it should "not log error when lock owner calls release and there is an exception" in new Fixture {
+    fail("not yet implemented")
+  }
+
+  it should "release resources, remove shutdown hook, and delete file when shutdown hook is called" in new Fixture {
+    when(mockChannel.tryLock()).thenReturn(mockFileLock)
+    projectLock.lock() shouldBe UnitSuccess
+
+    shutdownHooksAdded.size shouldBe 1
+    shutdownHooksAdded.head.run()
+
+    verify(mockFileLock, times(1)).release()
+    verify(mockFileLock, times(1)).close()
+    verify(mockChannel, times(1)).close()
+    verify(mockFile, times(1)).delete()
+
+    logErrorArgs shouldBe List(UnitSuccess, UnitSuccess, UnitSuccess, UnitSuccess)
+  }
+
+  it should "log error when shutdown hook execution experiences an error" in new Fixture {
+    fail("not yet implemented")
+  }
 }

@@ -103,8 +103,8 @@ private[persist] class ProjectLock(projectName: String) extends Logging { self: 
     } {
       lock =>
         logger.debug(s"Acquired single application instance lock for project $projectName.")
-        val shutdownHook = new Thread() {
-          override def run() {
+        val shutdownHook = new Thread {
+          override def run(): Unit = {
             logIfError(release())
           }
         }
