@@ -23,7 +23,7 @@
 
 package trove.core.persist
 
-import java.io.{File, IOException}
+import java.io.{File, IOException, RandomAccessFile}
 import java.nio.channels.FileLock
 
 import org.mockito.Mockito._
@@ -55,10 +55,13 @@ class ProjectLockSpec extends FlatSpec with MockitoSugar with BeforeAndAfter wit
 
   trait Fixture {
 
-    var mockFilesCreated: List[(File, String)] = List.empty
+    var filesCreated: List[(File, String)] = List.empty
     val mockFile: File = mock[File]
 
-    var mockChannelsCreated: List[(File, String)] = List.empty
+    var randomAccessFilesCreated: List[File] = List.empty
+    val mockRandomAccessFile: RandomAccessFile = mock[RandomAccessFile]
+
+    var channelsCreated: List[RandomAccessFile] = List.empty
     val mockChannel: LockableChannel = mock[LockableChannel]
 
     val mockFileLock: FileLock = mock[FileLock]
@@ -67,34 +70,43 @@ class ProjectLockSpec extends FlatSpec with MockitoSugar with BeforeAndAfter wit
     var shutdownHooksRemoved: List[Thread] = List.empty
     var logErrorArgs: List[Try[Unit]] = List.empty
 
+    val throwExceptionOnCreateRandomAccessFile = false
     val throwExceptionOnAddShutdownHook = false
     val throwExceptionOnRemoveShutdownHook = false
 
     val projectLock: ProjectLock = new ProjectLock(projectName) with EnvironmentOps {
 
-      def newFile(directory: File, filename: String): File = {
-        mockFilesCreated = (directory, filename) +: mockFilesCreated
+      override def newFile(directory: File, filename: String): File = {
+        filesCreated = (directory, filename) +: filesCreated
         mockFile
       }
 
-      def newChannel(file: File, mode: String): LockableChannel = {
-        mockChannelsCreated = (file, mode) +: mockChannelsCreated
+      override def newRandomAccessFile(file: File): RandomAccessFile = if(throwExceptionOnCreateRandomAccessFile) {
+        throw new RuntimeException("doom")
+      }
+      else {
+        randomAccessFilesCreated = file +: randomAccessFilesCreated
+        mockRandomAccessFile
+      }
+
+      override def newChannel(raf: RandomAccessFile): LockableChannel = {
+        channelsCreated = raf +: channelsCreated
         mockChannel
       }
 
-      def addShutdownHook(thread: Thread): Unit = if(throwExceptionOnAddShutdownHook) {
+      override def addShutdownHook(thread: Thread): Unit = if(throwExceptionOnAddShutdownHook) {
         throw new Exception("doom")
       } else {
         shutdownHooksAdded = thread +: shutdownHooksAdded
       }
 
-      def removeShutdownHook(thread: Thread): Unit = if(throwExceptionOnRemoveShutdownHook) {
+      override def removeShutdownHook(thread: Thread): Unit = if(throwExceptionOnRemoveShutdownHook) {
         throw new Exception("doom")
       } else {
         shutdownHooksRemoved = thread +: shutdownHooksRemoved
       }
 
-      def logIfError(result: Try[Unit]): Unit = logErrorArgs = result +: logErrorArgs
+      override def logIfError(result: Try[Unit]): Unit = logErrorArgs = result +: logErrorArgs
     }
   }
 
@@ -103,8 +115,9 @@ class ProjectLockSpec extends FlatSpec with MockitoSugar with BeforeAndAfter wit
     val result: Try[Unit] = projectLock.lock()
     result.isSuccess shouldBe true
 
-    mockFilesCreated should contain theSameElementsAs List((expectedDirectory, expectedFilename))
-    mockChannelsCreated should contain theSameElementsAs List((mockFile, "rw"))
+    filesCreated should contain theSameElementsAs List((expectedDirectory, expectedFilename))
+    randomAccessFilesCreated should contain theSameElementsAs List(mockFile)
+    channelsCreated should contain theSameElementsAs List(mockRandomAccessFile)
 
     verify(mockChannel, times(1)).tryLock()
     shutdownHooksAdded.size shouldBe 1
@@ -125,8 +138,9 @@ class ProjectLockSpec extends FlatSpec with MockitoSugar with BeforeAndAfter wit
       case _ => fail("wrong result when locking")
     }
 
-    mockFilesCreated should contain theSameElementsAs List((expectedDirectory, expectedFilename))
-    mockChannelsCreated should contain theSameElementsAs List((mockFile, "rw"))
+    filesCreated should contain theSameElementsAs List((expectedDirectory, expectedFilename))
+    randomAccessFilesCreated should contain theSameElementsAs List(mockFile)
+    channelsCreated should contain theSameElementsAs List(mockRandomAccessFile)
 
     verify(mockChannel, times(1)).tryLock()
     shutdownHooksAdded shouldBe empty
@@ -143,6 +157,31 @@ class ProjectLockSpec extends FlatSpec with MockitoSugar with BeforeAndAfter wit
     failures shouldBe empty
   }
 
+  it should "return SystemError and not allocate resources if exception is thrown while creating RandomAccessFIle" in new Fixture {
+    override val throwExceptionOnCreateRandomAccessFile: Boolean = true
+    val result: Try[Unit] = projectLock.lock()
+    result match {
+      case Failure(_: SystemException) => // no op
+      case _ => fail("wrong result when locking")
+    }
+
+    filesCreated should contain theSameElementsAs List((expectedDirectory, expectedFilename))
+    randomAccessFilesCreated shouldBe empty
+    channelsCreated shouldBe empty
+
+    verify(mockChannel, never()).tryLock()
+    shutdownHooksAdded shouldBe empty
+
+    verify(mockFileLock, never()).release()
+    verify(mockFileLock, never()).close()
+
+    verify(mockChannel, never()).close()
+    verify(mockFile, never()).delete()
+    shutdownHooksRemoved shouldBe empty
+
+    logErrorArgs shouldBe empty
+  }
+
   it should "return SystemError, close the channel, and not allocate resources if an exception is thrown while it is trying to acquire lock" in new Fixture {
 
     when(mockChannel.tryLock()).thenThrow(new IOException("doom"))
@@ -152,8 +191,9 @@ class ProjectLockSpec extends FlatSpec with MockitoSugar with BeforeAndAfter wit
       case _ => fail("wrong result when locking")
     }
 
-    mockFilesCreated should contain theSameElementsAs List((expectedDirectory, expectedFilename))
-    mockChannelsCreated should contain theSameElementsAs List((mockFile, "rw"))
+    filesCreated should contain theSameElementsAs List((expectedDirectory, expectedFilename))
+    randomAccessFilesCreated should contain theSameElementsAs List(mockFile)
+    channelsCreated should contain theSameElementsAs List(mockRandomAccessFile)
 
     verify(mockChannel, times(1)).tryLock()
     shutdownHooksAdded shouldBe empty
@@ -179,8 +219,9 @@ class ProjectLockSpec extends FlatSpec with MockitoSugar with BeforeAndAfter wit
       case _ => fail("wrong result when locking")
     }
 
-    mockFilesCreated should contain theSameElementsAs List((expectedDirectory, expectedFilename))
-    mockChannelsCreated should contain theSameElementsAs List((mockFile, "rw"))
+    filesCreated should contain theSameElementsAs List((expectedDirectory, expectedFilename))
+    randomAccessFilesCreated should contain theSameElementsAs List(mockFile)
+    channelsCreated should contain theSameElementsAs List(mockRandomAccessFile)
 
     verify(mockChannel, times(1)).tryLock()
     shutdownHooksAdded shouldBe empty

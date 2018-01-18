@@ -43,9 +43,8 @@ private[persist] object ProjectLock {
 
   def constructLockfileName(projectName: String): String = s"$projectName$lockfileSuffix"
 
-  //ejf-fixMe: refactor this, move RAF to EnvironmentOps
-  class LockableChannel(file: File) {
-    val channel: FileChannel = new RandomAccessFile(file, "rw").getChannel
+  class LockableChannel(raf: RandomAccessFile) {
+    val channel: FileChannel = raf.getChannel
     @throws(clazz = classOf[IOException])
     def tryLock(): FileLock = channel.tryLock()
     def close(): Unit = channel.close()
@@ -53,18 +52,20 @@ private[persist] object ProjectLock {
 
   trait EnvironmentOps {
     def newFile(directory: File, filename: String): File
-    def newChannel(file: File, mode: String): LockableChannel
+    def newRandomAccessFile(file: File): RandomAccessFile
+    def newChannel(raf: RandomAccessFile): LockableChannel
     def addShutdownHook(thread: Thread): Unit
     def removeShutdownHook(thread: Thread): Unit
     def logIfError(result: Try[Unit]): Unit
   }
 
   def apply(projectName: String): ProjectLock = new ProjectLock(projectName) with EnvironmentOps {
-    def newFile(directory: File, filename: String): File = new File(directory, filename)
-    def newChannel(file: File, mode: String): LockableChannel = new LockableChannel(file)
-    def addShutdownHook(hook: Thread): Unit = Runtime.getRuntime.addShutdownHook(hook)
-    def removeShutdownHook(hook: Thread): Unit = Runtime.getRuntime.removeShutdownHook(hook)
-    def logIfError(result: Try[Unit]): Unit = result match {
+    override def newFile(directory: File, filename: String): File = new File(directory, filename)
+    override def newRandomAccessFile(file: File): RandomAccessFile = new RandomAccessFile(file: File, "rw")
+    override def newChannel(raf: RandomAccessFile): LockableChannel = new LockableChannel(raf)
+    override def addShutdownHook(hook: Thread): Unit = Runtime.getRuntime.addShutdownHook(hook)
+    override def removeShutdownHook(hook: Thread): Unit = Runtime.getRuntime.removeShutdownHook(hook)
+    override def logIfError(result: Try[Unit]): Unit = result match {
       case Success(_) => // No-op
       case Failure(NonFatal(e)) => logger.error("Error!", e)
       case Failure(e) => throw e // Fatal, throw it, bubble it up!
@@ -84,7 +85,8 @@ private[persist] class ProjectLock(projectName: String) extends Logging { self: 
   def lock(): Try[Unit] = Try {
     logger.debug(s"Trying to acquire single application instance lock: .${file.getAbsolutePath}")
 
-    val channel = newChannel(file, "rw")
+    val raf = newRandomAccessFile(file)
+    val channel = newChannel(raf)
 
     var tryLockSuccess = false
     var tryLockResult: FileLock = null
