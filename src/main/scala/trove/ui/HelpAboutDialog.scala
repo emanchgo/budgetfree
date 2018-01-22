@@ -5,7 +5,7 @@
  *  helps you track your finances, FREES you from complex budgeting, and
  *  enables you to build your TROVE of savings!
  *
- *  Copyright © 2016-2017 Eric John Fredericks.
+ *  Copyright © 2016-2018 Eric John Fredericks.
  *
  *  Trove is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -41,7 +41,7 @@ private[ui] class HelpAboutDialog extends AppModalAlert(AlertType.Information) {
   val appLabel_1 = Label(s"Trove Version $ApplicationVersion")
   val description_1 = Label("A FREE desktop application that helps you track your finances,")
   val description_2 = Label("FREES you from complex budgeting, and enables you to build your TROVE of savings!")
-  val copyrightLabel = Label("Copyright © 2016-2017 Eric John Fredericks")
+  val copyrightLabel = Label("Copyright © 2016-2018 Eric John Fredericks")
   val licenseLinkLabel = Label("This software is licensed under the")
   val licenseLink = new Hyperlink {
     text = "GNU General Public License, version 3.0"
