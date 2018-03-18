@@ -26,10 +26,9 @@ import java.io.{File, IOException, RandomAccessFile}
 import java.nio.channels.{FileChannel, FileLock}
 
 import grizzled.slf4j.Logging
-import org.omg.CORBA.SystemException
 import trove.constants._
 import trove.core.persist.ProjectLock.EnvironmentOps
-import trove.exceptional.SystemError
+import trove.exceptional.{SystemError, SystemException}
 
 import scala.util.control.NonFatal
 import scala.util.{Failure, Success, Try}

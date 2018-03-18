@@ -28,21 +28,21 @@ name := "trove"
 
 version := "0.1.0-SNAPSHOT"
 
-scalaVersion := "2.12.3"
+scalaVersion := "2.12.4"
 
 scalacOptions ++= Seq("-deprecation", "-feature")
 
 // Versions
-val akkaVersion          = "2.5.6"
-val grizzledSlf4jVersion = "1.3.1"
-val scalaFxVersion       = "8.0.102-R11"
+val akkaVersion          = "2.5.11"
+val grizzledSlf4jVersion = "1.3.2"
+val scalaFxVersion       = "8.0.144-R12"
 val slf4jVersion         = "1.7.25"
-val slickVersion         = "3.2.1"
-val sqliteJdbcVersion    = "3.20.0"
+val slickVersion         = "3.2.2"
+val sqliteJdbcVersion    = "3.21.0.1"
 
 val mockitoVersion       = "2.13.0"
-val scalacticVersion     = "3.0.4"
-val scalatestVersion     = "3.0.4"
+val scalacticVersion     = "3.0.5"
+val scalatestVersion     = "3.0.5"
 
 // UI
 libraryDependencies ++= Seq(

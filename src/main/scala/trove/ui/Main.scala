@@ -24,10 +24,6 @@
 package trove.ui
 
 import javafx.application.{Application => JFXApplication}
-import javafx.scene.control.{Button => JFXButton}
-import javafx.scene.input.{KeyCode => JFXKeyCode, KeyEvent => JFXKeyEvent}
-
-import com.sun.javafx.scene.control.behavior.{ButtonBehavior => JFXButtonBehavior, KeyBinding => JFXKeyBinding}
 import grizzled.slf4j.Logging
 import trove.constants.ApplicationName
 import trove.core.Trove
@@ -49,12 +45,11 @@ private[ui] object Main extends JFXApp with Logging {
 
   Platform.implicitExit = false
 
-  // This code will force buttons to fire when ENTER is pressed.
-  new JFXButtonBehavior[JFXButton](new JFXButton()) {
-    import JFXButtonBehavior._
-    BUTTON_BINDINGS.add(new JFXKeyBinding(JFXKeyCode.ENTER, JFXKeyEvent.KEY_PRESSED, "Press"))
-    BUTTON_BINDINGS.add(new JFXKeyBinding(JFXKeyCode.ENTER, JFXKeyEvent.KEY_RELEASED, "Release"))
-  }
+// This was required under Java 8, but not needed for Java 9.
+//  new JFXButtonBehavior[JFXButton](new JFXButton()) {
+//    BUTTON_BINDINGS.add(new JFXKeyBinding(JFXKeyCode.ENTER, JFXKeyEvent.KEY_PRESSED, "Press"))
+//    BUTTON_BINDINGS.add(new JFXKeyBinding(JFXKeyCode.ENTER, JFXKeyEvent.KEY_RELEASED, "Release"))
+//  }
 
   dialogOnError(Trove.startup()).recover { case _ => shutdown()}
 
