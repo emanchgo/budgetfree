@@ -23,18 +23,30 @@
 
 package trove.core.persist
 
+import java.io.File
+
 import grizzled.slf4j.Logging
+import slick.jdbc.SQLiteProfile
 import trove.constants.ProjectsHomeDir
 import trove.exceptional.ValidationError
 
+import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.duration.Duration
+import scala.concurrent.{Await, Future}
 import scala.util.{Success, Try}
 
 private[core] object PersistenceManager extends Logging {
 
+  import SQLiteProfile.backend._
+
   val DbSuffix: String = ".sqlite3"
   val ValidChars: String = "^[a-zA-Z0-9_\\-]*$"
 
-  private[this] case class Project(name: String, lock: ProjectLock) {
+  logger.info("Loading SQLite JDBC driver...")
+  Class.forName("org.sqlite.JDBC")
+  logger.info("SQLite JDBC driver loaded!")
+
+  private[persist] class Project(name: String, lock: ProjectLock, db: DatabaseDef) {
     def close(): Unit = {
       logger.info(s"Closing project $name")
       lock.release()
@@ -47,17 +59,33 @@ private[core] object PersistenceManager extends Logging {
     ProjectsHomeDir.listFiles.filter(_.isFile).map(_.getName).filterNot(_.endsWith(ProjectLock.lockfileSuffix))
       .map(_.stripSuffix(DbSuffix)).toSeq.sorted
 
-  def openProject(projectName: String): Try[Unit] = {
+  def openProject(projectName: String): Try[Project] = {
     if(projectName.matches(ValidChars)) {
       logger.debug(s"Opening project: $projectName")
       val projectLock: ProjectLock = ProjectLock(projectName)
       val lockResult = projectLock.lock()
-      val openResult: Try[Project] = lockResult.flatMap { _ =>
-        Try(Project(projectName, projectLock))
+      lockResult.map { _ =>
+        val dbFileName = s"$projectName$DbSuffix"
+        val dbFile = new File(ProjectsHomeDir, dbFileName)
+        val create: Boolean = !dbFile.exists()
+        //ejf-fixMe: if db doesn't open, release lock
+        val dbURL = s"jdbc:sqlite:${dbFile.getAbsolutePath}"
+        val db: DatabaseDef = Database.forURL(dbURL)
+        (db, create)
+      }.map { case (db, create) =>
+        val setupFuture = if(create) {
+          logger.info(s"Creating database for project $projectName")
+          db.run(Tables.setupAction)
+        }
+        else {
+          logger.info(s"Database exists for project $projectName")
+          Future successful Unit
+        }
+        val result: Future[Project] = setupFuture.map(_ => new Project(projectName, projectLock, db))
+        val project = Await.result(result, Duration.Inf)
+        currentProject = Some(project)
+        project
       }
-      currentProject = openResult.toOption
-      currentProject.fold(logger.error(s"Error opening project $projectName"))(_ => logger.info(s"Opened project $projectName"))
-      openResult.map(_ => ())
     }
     else {
       ValidationError(s"""Invalid project name: "$projectName." Valid characters are US-ASCII alphanumeric characters, '_', and '-'.""")
