@@ -26,74 +26,148 @@ package trove.core.persist
 import java.io.File
 
 import grizzled.slf4j.Logging
-import slick.jdbc.SQLiteProfile
+import slick.jdbc.SQLiteProfile.api._
+import slick.jdbc.{DriverDataSource, SQLiteProfile}
+import slick.util.ClassLoaderUtil
 import trove.constants.ProjectsHomeDir
-import trove.exceptional.ValidationError
+import trove.exceptional.PersistenceError
 
 import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.duration.Duration
+import scala.concurrent.duration._
 import scala.concurrent.{Await, Future}
-import scala.util.{Success, Try}
+import scala.util.control.NonFatal
+import scala.util.{Failure, Success, Try}
 
 private[core] object PersistenceManager extends Logging {
 
   import SQLiteProfile.backend._
 
-  val DbSuffix: String = ".sqlite3"
-  val ValidChars: String = "^[a-zA-Z0-9_\\-]*$"
+  val JdbcPrefix = "jdbc:sqlite:"
+  val DbFilenameSuffix: String = ".sqlite3"
 
-  logger.info("Loading SQLite JDBC driver...")
-  Class.forName("org.sqlite.JDBC")
-  logger.info("SQLite JDBC driver loaded!")
-
-  private[persist] class Project(name: String, lock: ProjectLock, db: DatabaseDef) {
-    def close(): Unit = {
-      logger.info(s"Closing project $name")
-      lock.release()
-    }
-  }
-
+  // The current active project
   @volatile private[this] var currentProject: Option[Project] = None
 
+  // Persistence resources for a project
+  private[persist] case class Project(name: String, lock: ProjectLock, db: DatabaseDef) {
+
+    private[this] val shutdownHook = new Thread() {
+      override def run(): Unit = {
+        logger.warn(s"Shutdown hook executing for project $name")
+        db.close()
+        // lock does its own shutdown hook, but just to be sure
+        releaseLock(lock)
+      }
+    }
+
+    def close(): Unit = {
+      db.close()
+      logger.debug(s"Database for project $name closed")
+      releaseLock(lock)
+      logger.debug(s"Lock for project $name released")
+      Runtime.getRuntime.removeShutdownHook(shutdownHook)
+      logger.debug(s"Database shutdown hook removed for project $name")
+      logger.info(s"Closed project $name")
+    }
+
+    Runtime.getRuntime.addShutdownHook(shutdownHook)
+  }
+
   def listProjectNames: Seq[String] =
-    ProjectsHomeDir.listFiles.filter(_.isFile).map(_.getName).filterNot(_.endsWith(ProjectLock.lockfileSuffix))
-      .map(_.stripSuffix(DbSuffix)).toSeq.sorted
+    ProjectsHomeDir.listFiles.filter(_.isFile).map(_.getName).filterNot(_.endsWith(ProjectLock.lockfileSuffix)).filterNot(_.startsWith("."))
+      .map(_.stripSuffix(DbFilenameSuffix)).toSeq.sorted
 
   def openProject(projectName: String): Try[Project] = {
-    if(projectName.matches(ValidChars)) {
-      logger.debug(s"Opening project: $projectName")
-      val projectLock: ProjectLock = ProjectLock(projectName)
-      val lockResult = projectLock.lock()
-      lockResult.map { _ =>
-        val dbFileName = s"$projectName$DbSuffix"
-        val dbFile = new File(ProjectsHomeDir, dbFileName)
-        val create: Boolean = !dbFile.exists()
-        //ejf-fixMe: if db doesn't open, release lock
-        val dbURL = s"jdbc:sqlite:${dbFile.getAbsolutePath}"
-        val db: DatabaseDef = Database.forURL(dbURL)
-        (db, create)
-      }.map { case (db, create) =>
-        val setupFuture = if(create) {
-          logger.info(s"Creating database for project $projectName")
+    logger.debug(s"Opening project: $projectName")
+
+    val projectLock: ProjectLock = ProjectLock(projectName)
+    val lockResult = projectLock.lock()
+
+    val openResult: Try[(DatabaseDef, Boolean)] = lockResult.map { _ =>
+      val dbFileName = s"$projectName$DbFilenameSuffix"
+      val dbFile = new File(ProjectsHomeDir, dbFileName)
+      val create: Boolean = !dbFile.exists()
+      val dbURL = s"$JdbcPrefix${dbFile.getAbsolutePath}"
+      val db: DatabaseDef = openDatabase(dbURL)
+      (db, create)
+    }
+
+    val projectResult: Try[Project] = openResult.flatMap {
+      case (db, create) =>
+        val setupResult: Future[Unit] = if (create) {
           db.run(Tables.setupAction)
         }
         else {
-          logger.info(s"Database exists for project $projectName")
-          Future successful Unit
+          Future.successful(())
         }
-        val result: Future[Project] = setupFuture.map(_ => new Project(projectName, projectLock, db))
-        val project = Await.result(result, Duration.Inf)
-        currentProject = Some(project)
-        project
-      }
+
+        val versionCheckResult: Future[Try[Project]] = setupResult.flatMap { _ =>
+          db.run(Tables.version.result).map {
+            case rows if rows.length == 1 && rows.head == Tables.CurrentDbVersion =>
+              val prj = new Project(projectName, projectLock, db)
+              Success(prj)
+            case rows if rows.length == 1 => PersistenceError(s"Invalid database version: ${rows.head.id}")
+            case rows => PersistenceError(s"Incorrect number of rows in the VERSION table: found ${rows.size} rows")
+          }
+        }
+
+        Await.result(versionCheckResult, Duration.Inf)
     }
-    else {
-      ValidationError(s"""Invalid project name: "$projectName." Valid characters are US-ASCII alphanumeric characters, '_', and '-'.""")
+
+    projectResult match {
+      case Success(prj) =>
+        currentProject = projectResult.toOption
+        logger.info(s"Project opened: ${prj.name}")
+      case Failure(e) =>
+        logger.error("Error creating project", e)
+        releaseLock(projectLock)
+    }
+
+    projectResult
+  }
+
+  def closeCurrentProject: Try[Unit] = currentProject.fold[Try[Unit]](Success(())) { project: Project =>
+    Try(project.close()).map { _ =>
+      currentProject = None
+    }.recoverWith {
+      case NonFatal(e) =>
+        logger.error("Error closing project")
+        Failure(e)
     }
   }
 
-  def closeCurrentProject: Try[Unit] = currentProject.fold[Try[Unit]](Success(Unit)) { project =>
-    currentProject = None
-    Try(project.close())
+  private[this] def openDatabase(dbURL: String): DatabaseDef = {
+    val dds = new DriverDataSource(
+      url = dbURL,
+      user = null,
+      password = null,
+      properties = null,
+      driverClassName = "org.sqlite.JDBC",
+      classLoader = ClassLoaderUtil.defaultClassLoader)
+
+    // N.B. We only need a single thread, so we pass 1 here.
+    val numWorkers = 1
+
+    val executor = AsyncExecutor(
+      name = "AsyncExecutor.trove",
+      minThreads = numWorkers,
+      maxThreads = numWorkers,
+      queueSize = numWorkers,
+      maxConnections = numWorkers,
+      keepAliveTime = 1.minute,
+      registerMbeans = false
+    )
+
+    Database.forDataSource(
+      ds = dds,
+      maxConnections = Some(numWorkers),
+      executor = executor,
+      keepAliveConnection = false
+    )
   }
+
+  private[this] def releaseLock(lock: ProjectLock): Unit =
+    lock.release().recover {
+      case NonFatal(ex) => logger.error("Error releasing project lock", ex)
+    }
 }

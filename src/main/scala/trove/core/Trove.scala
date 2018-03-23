@@ -21,33 +21,42 @@
  *  along with Trove.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-
 package trove.core
 
 import grizzled.slf4j.Logging
 import trove.core.event.EventService
 import trove.core.persist.PersistenceManager
 import trove.events.ProjectChanged
+import trove.exceptional.ValidationError
 
 import scala.util.{Failure, Success, Try}
 
 object Trove extends Logging {
 
+  // For project name validation
+  val ValidProjectNameChars: String = "^[a-zA-Z0-9_\\-]*$"
+
   def startup(): Try[Unit] = Success(Unit)
 
   def listProjectNames: Seq[String] = PersistenceManager.listProjectNames
 
-  def apply(projectName: String): Try[Trove] = PersistenceManager.openProject(projectName).flatMap { _ =>
-    logger.debug(s"Database for project $projectName successfully opened.")
-    val result = Try(new Trove(projectName))
-    result.foreach(_ => EventService.publish(ProjectChanged(Some(projectName))))
-    result
-  }.recoverWith {
-    case error: Throwable =>
-      logger.error(s"Project with name $projectName could not be initialized. Closing database (if it was open).")
-      PersistenceManager.closeCurrentProject
-      Failure(error)
-  }
+  def apply(projectName: String): Try[Trove] =
+    if (projectName.matches(ValidProjectNameChars)) {
+      PersistenceManager.openProject(projectName).flatMap { _ =>
+        logger.debug(s"Database for project $projectName successfully opened.")
+        val result = Try(new Trove(projectName))
+        result.foreach(_ => EventService.publish(ProjectChanged(Some(projectName))))
+        result
+      }.recoverWith {
+        case error: Throwable =>
+          logger.error(s"Project with name $projectName could not be initialized. Closing database (if it was open).")
+          PersistenceManager.closeCurrentProject
+          Failure(error)
+      }
+    }
+    else {
+      ValidationError(s"""Invalid project name: "$projectName." Valid characters are US-ASCII alphanumeric characters, '_', and '-'.""")
+    }
 
   def closeCurrentProject(): Try[Unit] = PersistenceManager.closeCurrentProject
 
@@ -57,6 +66,5 @@ object Trove extends Logging {
 }
 
 final class Trove private(val projectName: String) {
-
   override def toString: String = projectName
 }

@@ -32,10 +32,24 @@ import scala.util.Try
 
 private[persist] object Tables {
 
+  case class DBVersion(id: Long)
+
+  // N.B. Change this value when modifying the structure of the database!
+  // TODO: Work out db evolution!
+  val CurrentDbVersion = DBVersion(0)
+
+  // VERSION TABLE
+  class Version(tag: Tag) extends Table[DBVersion](tag, "VERSION") {
+    def id = column[Long]("ID", O.PrimaryKey)
+
+    def * = id <> (DBVersion.apply, DBVersion.unapply)
+  }
+  val version: TableQuery[Version] = TableQuery[Version]
+
+  // ACCOUNTS TABLE
   class Accounts(tag: Tag) extends Table[Account](tag, "ACCOUNTS") {
     import AccountType._
 
-    // Auto Increment the id primary key column
     def id = column[Int]("ID", O.PrimaryKey, O.AutoInc)
     def accountType = column[AccountType]("ACCOUNT_TYPE")       // can't be null
     def name = column[String]("ACCOUNT_NAME")                   // can't be null
@@ -43,18 +57,11 @@ private[persist] object Tables {
     def description = column[String]("ACCOUNT_DESCRIPTION")
     def parentAccountId = column[Int]("PARENT_ACCOUNT_ID")
 
-    implicit val accountTypeMapper: JdbcType[AccountType.Value] with BaseTypedType[AccountType.Value] = enumValueMapper(AccountType)
-
-    // column names to/from an Account
     def * = (id.?, accountType, name, isPlaceHolder, description.?, parentAccountId.?) <> (Account.tupled, Account.unapply)
   }
-
   val accounts: TableQuery[Accounts] = TableQuery[Accounts]
 
-  val setupAction: DBIO[Unit] = DBIO.seq(
-    accounts.schema.create
-  )
-
+  // Some things needed - slick boilerplate
   def enumValueMapper(enum: Enumeration): JdbcType[enum.Value] with BaseTypedType[enum.Value] =
     MappedColumnType.base[enum.Value, String](
       _.toString,
@@ -62,4 +69,13 @@ private[persist] object Tables {
         s"enumeration $s doesn't exist $enum [${enum.values.mkString(",")}]"))
     )
 
+  implicit val accountTypeMapper: JdbcType[AccountType.Value] with BaseTypedType[AccountType.Value] = enumValueMapper(AccountType)
+
+  // Setup action
+  lazy val setupAction: DBIO[Unit] = DBIO.seq(
+    version.schema.create,
+    accounts.schema.create,
+
+    version += CurrentDbVersion
+  )
 }
