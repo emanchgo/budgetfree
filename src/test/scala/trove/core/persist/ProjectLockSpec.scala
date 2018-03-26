@@ -362,4 +362,9 @@ class ProjectLockSpec extends FlatSpec with MockitoSugar with BeforeAndAfter wit
     val failures: List[Try[Unit]] = logErrorArgs.filter(_.isFailure)
     failures shouldBe empty
   }
+
+  "shutdown hook" should "do everything release does except remove itself from jvm shutdown hooks" in new Fixture {
+    //ejf-fixMe: implement
+    fail("Not implemented")
+  }
 }

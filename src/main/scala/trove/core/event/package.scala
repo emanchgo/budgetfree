@@ -14,9 +14,7 @@ package object event {
       EventService.unsubscribeEvents(this)
     }
   
-    def onEvent: PartialFunction[Event,Unit] = {
-      case _: Event =>
-    }
+    def onEvent: PartialFunction[Event,Unit]
   }
 }
 

@@ -29,6 +29,7 @@ import trove.core.persist.PersistenceManager
 import trove.events.ProjectChanged
 import trove.exceptional.ValidationError
 
+import scala.util.control.NonFatal
 import scala.util.{Failure, Success, Try}
 
 object Trove extends Logging {
@@ -42,23 +43,25 @@ object Trove extends Logging {
 
   def apply(projectName: String): Try[Trove] =
     if (projectName.matches(ValidProjectNameChars)) {
-      PersistenceManager.openProject(projectName).flatMap { _ =>
+      PersistenceManager.openProject(projectName).map { _ =>
         logger.debug(s"Database for project $projectName successfully opened.")
-        val result = Try(new Trove(projectName))
-        result.foreach(_ => EventService.publish(ProjectChanged(Some(projectName))))
+        val result = new Trove(projectName)
+        EventService.publish(ProjectChanged(Some(projectName)))
         result
       }.recoverWith {
-        case error: Throwable =>
-          logger.error(s"Project with name $projectName could not be initialized. Closing database (if it was open).")
+        case NonFatal(e) =>
+          logger.error(s"Project with name $projectName could not be initialized. Closing project (if it was open).")
           PersistenceManager.closeCurrentProject
-          Failure(error)
+          Failure(e)
       }
     }
     else {
       ValidationError(s"""Invalid project name: "$projectName." Valid characters are US-ASCII alphanumeric characters, '_', and '-'.""")
     }
 
-  def closeCurrentProject(): Try[Unit] = PersistenceManager.closeCurrentProject
+  def closeCurrentProject(): Try[Unit] = PersistenceManager.closeCurrentProject.map { _ =>
+    EventService.publish(ProjectChanged(None))
+  }
 
   def shutdown(): Try[Unit] = PersistenceManager.closeCurrentProject.flatMap { _ =>
     Try(EventService.shutdown()).map(_ => Unit)
