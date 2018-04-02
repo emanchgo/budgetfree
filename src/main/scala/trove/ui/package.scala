@@ -34,17 +34,19 @@ import scala.util.control.NonFatal
 import scala.util.{Failure, Try}
 import scalafx.scene.control.Alert.AlertType
 import scalafx.scene.control.{ButtonBar, ButtonType, Label}
-import scalafx.scene.image.{Image, ImageView}
+import scalafx.scene.image.Image
 import scalafx.scene.paint.Color
 
 package object ui extends Logging {
 
   private[this] val ApplicationIconPath = "MoneyTransfer-100.png"
-  private[ui] val ApplicationIconUrl = getClass.getClassLoader.getResource(ApplicationIconPath)
-  private[ui] val ApplicationIconImage64 = new Image(ApplicationIconUrl.toExternalForm, 64, 64, true, true)
-  private[ui] val ApplicationIconImage96 = new Image(ApplicationIconUrl.toExternalForm, 96, 96, true, true)
-  private[ui] def ApplicationIconImageView = new ImageView(ApplicationIconImage64)
+  private[ui] val ApplicationIconImage64 = getImage(ApplicationIconPath, 64)
+  private[ui] val ApplicationIconImage96 = getImage(ApplicationIconPath, 96)
 
+  private[ui] def getImage(path: String, size: Int): Image = {
+    val url = getClass.getClassLoader.getResource(path)
+    new Image(url.toExternalForm, size, size, true, true)
+  }
 
   private[this] val ThirdPartyLicenseTextPath = "THIRD_PARTY_LICENSING"
   private[ui] val ThirdPartyLicenseUrlTextUri = getClass.getClassLoader.getResource(ThirdPartyLicenseTextPath).toURI

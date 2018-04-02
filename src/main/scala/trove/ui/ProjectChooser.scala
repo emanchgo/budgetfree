@@ -32,6 +32,7 @@ import scalafx.Includes._
 import scalafx.application.Platform
 import scalafx.collections.ObservableBuffer
 import scalafx.scene.control._
+import scalafx.scene.image.ImageView
 import scalafx.scene.layout.BorderPane
 
 private[ui] object ProjectChooser {
@@ -45,7 +46,7 @@ private[ui] class ProjectChooser private extends Dialog[String] with Logging {
 
   title = ApplicationName
   headerText = "Open Trove Project"
-  graphic = ApplicationIconImageView
+  graphic = new ImageView(ApplicationIconImage64)
   dialogPane().buttonTypes = Seq(Cancel, Open)
 
   private[this] val projectNames = Trove.listProjectNames

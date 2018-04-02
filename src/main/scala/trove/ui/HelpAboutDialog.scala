@@ -32,10 +32,11 @@ import scalafx.Includes._
 import scalafx.event.ActionEvent
 import scalafx.scene.control.Alert.AlertType
 import scalafx.scene.control._
+import scalafx.scene.image.ImageView
 import scalafx.scene.layout.VBox
 
 private[ui] class HelpAboutDialog extends AppModalAlert(AlertType.Information) {
-  graphic = ApplicationIconImageView
+  graphic = new ImageView(ApplicationIconImage64)
   headerText = "About Trove"
 
   val appLabel_1 = Label(s"Trove Version $ApplicationVersion")

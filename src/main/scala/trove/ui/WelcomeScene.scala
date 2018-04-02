@@ -46,7 +46,7 @@ private[ui] object WelcomeScene {
   }
 }
 
-private[ui] class WelcomeScene extends Scene with Logging {
+private[ui] class WelcomeScene extends Scene(800, 600) with Logging {
 
   import WelcomeScene._
 
@@ -97,7 +97,7 @@ private[ui] class WelcomeScene extends Scene with Logging {
     tooltip = "Exit Trove"
     onAction = _ => {
       logger.debug("Exit Trove called")
-      Main.conditionallyClose()
+      Main.conditionallyQuit()
     }
   }
 

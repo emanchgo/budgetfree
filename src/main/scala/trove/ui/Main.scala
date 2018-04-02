@@ -45,26 +45,18 @@ private[ui] object Main extends JFXApp with Logging {
 
   Platform.implicitExit = false
 
-// This was required under Java 8, but not needed for Java 9.
-//  new JFXButtonBehavior[JFXButton](new JFXButton()) {
-//    BUTTON_BINDINGS.add(new JFXKeyBinding(JFXKeyCode.ENTER, JFXKeyEvent.KEY_PRESSED, "Press"))
-//    BUTTON_BINDINGS.add(new JFXKeyBinding(JFXKeyCode.ENTER, JFXKeyEvent.KEY_RELEASED, "Release"))
-//  }
-
   dialogOnError(Trove.startup()).recover { case _ => shutdown()}
 
   stage = new PrimaryStage with UIEventListener {
     title = ApplicationName
-    //    minWidth = 1200
-    //    minHeight = 800
-    //delegate.setMaximized(true)
-    icons += ApplicationIconImage64
 
-    scene = new WelcomeScene
+    setWelcomeScene()
+
+    icons += ApplicationIconImage64
 
     onCloseRequest = (ev: WindowEvent) => {
       logger.debug("user close requested")
-      if (conditionallyClose()) {
+      if (conditionallyQuit()) {
         logger.debug("Close request confirmed")
       }
       else {
@@ -73,11 +65,22 @@ private[ui] object Main extends JFXApp with Logging {
     }
 
     def onReceive: PartialFunction[Event, Unit] = {
-      case ProjectChanged(projectName) => projectName.fold[Unit]{scene = new WelcomeScene}{pn => scene = new ActiveProjectScene(pn)}
+      case ProjectChanged(projectName) => projectName.fold[Unit](setWelcomeScene()){ pn =>
+        maximized = true
+        scene = new ActiveProjectScene(pn)
+      }
+    }
+
+    private[this] def setWelcomeScene(): Unit = {
+      maximized = false
+      height = 600
+      width = 800
+      centerOnScreen()
+      scene = new WelcomeScene
     }
   }
 
-  def conditionallyClose(): Boolean = {
+  def conditionallyQuit(): Boolean = {
     if(confirmQuitWithUser()) {
       shutdown()
       true

@@ -24,11 +24,16 @@
 
 package trove.ui
 
+import trove.core.Trove
+import trove.ui.fxext.{Menu, MenuItem}
+
 import scalafx.Includes._
 import scalafx.geometry.Insets
 import scalafx.geometry.Orientation.Vertical
 import scalafx.scene.Scene
-import scalafx.scene.control.{Label, SplitPane}
+import scalafx.scene.control._
+import scalafx.scene.image.ImageView
+import scalafx.scene.input.KeyCode
 import scalafx.scene.layout.{BorderPane, VBox}
 
 private[ui] class ActiveProjectScene(projectName: String) extends Scene {
@@ -56,7 +61,8 @@ private[ui] class ActiveProjectScene(projectName: String) extends Scene {
 
   private[this] val mainPane = new BorderPane {
     center = new SplitPane {
-      dividerPositions_=(0)
+      //dividerPositions_=(0)
+      dividerPositions = 0
       items ++= Seq(accountPane, transactionPane)
     }
     prefHeight = 500
@@ -71,13 +77,77 @@ private[ui] class ActiveProjectScene(projectName: String) extends Scene {
     minHeight = 100
   }
 
-  root = new BorderPane {
+  private[this] val trackingPane =  new BorderPane {
     center = new SplitPane {
       orientation = Vertical
-      dividerPositions_=(0)
+      dividerPositions = 0
+      //dividerPositions_=(0)
       items ++= Seq(mainPane, transactionDetailPane)
     }
-    top = Label("Main Menu")
+  }
+
+  private[this] val tabPane = new TabPane {
+    tabs = Seq(
+      new Tab {
+        text = "HOME"
+        closable = false
+        tabMaxHeight = 56
+        graphic = new ImageView(getImage("pie-chart-48.png", 48))
+      },
+      new Tab {
+        text = "CASH FLOWS"
+        closable = false
+        tabMaxHeight = 56
+        graphic = new ImageView(getImage("creek-48.png", 48))
+      },
+      new Tab {
+        text = "TRACKING"
+        closable = false
+        content = trackingPane
+        tabMaxHeight = 56
+        graphic = new ImageView(getImage("ledger-48.png", 48))
+      },
+      new Tab {
+        text = "REPORTS"
+        closable = false
+        tabMaxHeight = 56
+        graphic = new ImageView(getImage("report-card-48.png", 48))
+      },
+      new Tab {
+        text = "TROVE"
+        closable = false
+        tabMaxHeight = 56
+        graphic = new ImageView(getImage("gold-pot-48.png", 48))
+      }
+    )
+  }
+
+  private[this] val fileMenu = new Menu("_File", Some(KeyCode.F)) {
+    items = Seq(
+      new MenuItem("_Close Project", Some(KeyCode.C)) {
+        onAction = _ => Trove.closeCurrentProject() //ejf-fixMe: add confirm dialog
+      },
+      new MenuItem("E_xit Trove", Some(KeyCode.X)) {
+        onAction = _ =>  Main.conditionallyQuit()
+      }
+    )
+  }
+
+  private[this] val helpMenu = new Menu("_Help", Some(KeyCode.H)) {
+    items = Seq(
+      new MenuItem("_About", Some(KeyCode.A)) {
+        onAction = _ => new HelpAboutDialog().showAndWait()
+      }
+    )
+  }
+
+
+
+  root = new BorderPane {
+    center = tabPane
+    top = new MenuBar {
+      menus = Seq(fileMenu, helpMenu)
+    }
   }
 
 }
