@@ -93,7 +93,7 @@ private[ui] class WelcomeScene extends Scene(800, 600) with Logging {
   }
 
   private[this] val exitButton = new WelcomeScreenButton {
-    text = "_Exit Trove..."
+    text = "E_xit Trove..."
     tooltip = "Exit Trove"
     onAction = _ => {
       logger.debug("Exit Trove called")
@@ -103,7 +103,7 @@ private[ui] class WelcomeScene extends Scene(800, 600) with Logging {
 
   root = new BorderPane {
     padding = Insets(100, 250, 100, 250)
-    background = new Background(Seq(new BackgroundFill(Color.LightSlateGray, null, null)), Seq.empty)
+    background = new Background(Seq(new BackgroundFill(Color.Purple, null, null)), Seq.empty)
 
     center = new VBox {
       spacing = 20

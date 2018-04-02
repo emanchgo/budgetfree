@@ -25,12 +25,14 @@
 package trove.ui
 
 import trove.core.Trove
-import trove.ui.fxext.{Menu, MenuItem}
+import trove.ui.ButtonTypes.{No, Yes}
+import trove.ui.fxext.{AppModalAlert, Menu, MenuItem}
 
 import scalafx.Includes._
 import scalafx.geometry.Insets
 import scalafx.geometry.Orientation.Vertical
 import scalafx.scene.Scene
+import scalafx.scene.control.Alert.AlertType
 import scalafx.scene.control._
 import scalafx.scene.image.ImageView
 import scalafx.scene.input.KeyCode
@@ -90,18 +92,21 @@ private[ui] class ActiveProjectScene(projectName: String) extends Scene {
     tabs = Seq(
       new Tab {
         text = "HOME"
+        tooltip = "High level view"
         closable = false
         tabMaxHeight = 56
         graphic = new ImageView(getImage("pie-chart-48.png", 48))
       },
       new Tab {
         text = "CASH FLOWS"
+        tooltip = "Create cash flow plans"
         closable = false
         tabMaxHeight = 56
-        graphic = new ImageView(getImage("creek-48.png", 48))
+        graphic = new ImageView(getImage("plumbing-48.png", 48))
       },
       new Tab {
         text = "TRACKING"
+        tooltip = "Track individual transactions"
         closable = false
         content = trackingPane
         tabMaxHeight = 56
@@ -109,12 +114,14 @@ private[ui] class ActiveProjectScene(projectName: String) extends Scene {
       },
       new Tab {
         text = "REPORTS"
+        tooltip = "Create and view customized reports"
         closable = false
         tabMaxHeight = 56
         graphic = new ImageView(getImage("report-card-48.png", 48))
       },
       new Tab {
         text = "TROVE"
+        tooltip = "See how you stand on your savings goals"
         closable = false
         tabMaxHeight = 56
         graphic = new ImageView(getImage("gold-pot-48.png", 48))
@@ -125,7 +132,9 @@ private[ui] class ActiveProjectScene(projectName: String) extends Scene {
   private[this] val fileMenu = new Menu("_File", Some(KeyCode.F)) {
     items = Seq(
       new MenuItem("_Close Project", Some(KeyCode.C)) {
-        onAction = _ => Trove.closeCurrentProject() //ejf-fixMe: add confirm dialog
+        onAction = _ => if(confirmCloseCurrentProjectWithUser()) {
+          Trove.closeCurrentProject()
+        }
       },
       new MenuItem("E_xit Trove", Some(KeyCode.X)) {
         onAction = _ =>  Main.conditionallyQuit()
@@ -141,13 +150,21 @@ private[ui] class ActiveProjectScene(projectName: String) extends Scene {
     )
   }
 
-
-
   root = new BorderPane {
     center = tabPane
     top = new MenuBar {
       menus = Seq(fileMenu, helpMenu)
     }
+  }
+
+  private[this] def confirmCloseCurrentProjectWithUser(): Boolean = {
+    val result = new AppModalAlert(AlertType.Confirmation) {
+      headerText = "Close Project?"
+      buttonTypes = Seq(Yes,No)
+      contentText = s"Are you sure you want to close project '$projectName?'"
+    }.showAndWait()
+
+    result.map(bt => if(bt == Yes) true else false).fold(false)(identity)
   }
 
 }

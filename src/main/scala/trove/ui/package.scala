@@ -39,7 +39,7 @@ import scalafx.scene.paint.Color
 
 package object ui extends Logging {
 
-  private[this] val ApplicationIconPath = "MoneyTransfer-100.png"
+  private[this] val ApplicationIconPath = "gold-pot-96.png"
   private[ui] val ApplicationIconImage64 = getImage(ApplicationIconPath, 64)
   private[ui] val ApplicationIconImage96 = getImage(ApplicationIconPath, 96)
 

@@ -24,6 +24,7 @@
 package trove.ui
 
 import javafx.application.{Application => JFXApplication}
+
 import grizzled.slf4j.Logging
 import trove.constants.ApplicationName
 import trove.core.Trove
@@ -36,7 +37,6 @@ import scalafx.Includes._
 import scalafx.application.JFXApp.PrimaryStage
 import scalafx.application.{JFXApp, Platform}
 import scalafx.scene.control.Alert.AlertType
-import scalafx.stage.WindowEvent
 
 private[ui] object Main extends JFXApp with Logging {
 
@@ -54,7 +54,7 @@ private[ui] object Main extends JFXApp with Logging {
 
     icons += ApplicationIconImage64
 
-    onCloseRequest = (ev: WindowEvent) => {
+    onCloseRequest = ev => {
       logger.debug("user close requested")
       if (conditionallyQuit()) {
         logger.debug("Close request confirmed")
@@ -67,11 +67,13 @@ private[ui] object Main extends JFXApp with Logging {
     def onReceive: PartialFunction[Event, Unit] = {
       case ProjectChanged(projectName) => projectName.fold[Unit](setWelcomeScene()){ pn =>
         maximized = true
+        title = s"$ApplicationName [ $pn ]"
         scene = new ActiveProjectScene(pn)
       }
     }
 
     private[this] def setWelcomeScene(): Unit = {
+      title = ApplicationName
       maximized = false
       height = 600
       width = 800
