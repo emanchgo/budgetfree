@@ -23,7 +23,7 @@
 
 package trove.ui
 
-import trove.core.event.{Event, EventListener}
+import trove.core.infrastructure.event.{Event, EventListener}
 
 import scalafx.application.Platform
 

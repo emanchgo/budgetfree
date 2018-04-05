@@ -28,7 +28,7 @@ import javafx.application.{Application => JFXApplication}
 import grizzled.slf4j.Logging
 import trove.constants.ApplicationName
 import trove.core.Trove
-import trove.core.event.Event
+import trove.core.infrastructure.event.Event
 import trove.events.ProjectChanged
 import trove.ui.ButtonTypes._
 import trove.ui.fxext.AppModalAlert

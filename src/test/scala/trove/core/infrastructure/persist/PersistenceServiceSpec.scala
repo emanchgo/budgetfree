@@ -21,7 +21,7 @@
  *  along with Trove.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package trove.core.persist
+package trove.core.infrastructure.persist
 
 //ejf-fixMe: implement
 class PersistenceServiceSpec {

@@ -21,13 +21,14 @@
  *  along with Trove.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package trove.core.persist
+package trove.core.infrastructure.persist
+
 import java.io.{File, IOException, RandomAccessFile}
 import java.nio.channels.{FileChannel, FileLock}
 
 import grizzled.slf4j.Logging
 import trove.constants._
-import trove.core.persist.ProjectLock.EnvironmentOps
+import trove.core.infrastructure.persist.ProjectLock.EnvironmentOps
 import trove.exceptional.{SystemError, SystemException}
 
 import scala.util.control.NonFatal

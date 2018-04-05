@@ -24,8 +24,8 @@
 package trove.core
 
 import grizzled.slf4j.Logging
-import trove.core.event.EventService
-import trove.core.persist.PersistenceManager
+import trove.core.infrastructure.event.EventService
+import trove.core.infrastructure.persist.PersistenceManager
 import trove.events.ProjectChanged
 import trove.exceptional.ValidationError
 

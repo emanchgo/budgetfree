@@ -21,7 +21,7 @@
  *  along with Trove.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package trove.core.event
+package trove.core.infrastructure.event
 
 import akka.actor.{Actor, ActorRef, ActorSystem, Props}
 import grizzled.slf4j.Logging
