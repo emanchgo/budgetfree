@@ -35,6 +35,8 @@ import scala.util.control.NonFatal
 import scala.util.{Failure, Success, Try}
 
 // Only useful where the underlying database can be opened by different programs concurrently.
+// NOTE that this class does not clean up after itself if the JVM receives a SIGTERM.
+// Cleanup should be handled externally.
 private[persist] object ProjectLock {
 
   val lockfileSuffix: String = ".lck"
@@ -54,8 +56,6 @@ private[persist] object ProjectLock {
     def newFile(directory: File, filename: String): File
     def newRandomAccessFile(file: File): RandomAccessFile
     def newChannel(raf: RandomAccessFile): LockableChannel
-    def addShutdownHook(thread: Thread): Unit
-    def removeShutdownHook(thread: Thread): Unit
     def logIfError(result: Try[Unit]): Unit
   }
 
@@ -63,8 +63,6 @@ private[persist] object ProjectLock {
     override def newFile(directory: File, filename: String): File = new File(directory, filename)
     override def newRandomAccessFile(file: File): RandomAccessFile = new RandomAccessFile(file: File, "rw")
     override def newChannel(raf: RandomAccessFile): LockableChannel = new LockableChannel(raf)
-    override def addShutdownHook(hook: Thread): Unit = Runtime.getRuntime.addShutdownHook(hook)
-    override def removeShutdownHook(hook: Thread): Unit = Runtime.getRuntime.removeShutdownHook(hook)
     override def logIfError(result: Try[Unit]): Unit = result match {
       case Success(_) => // No-op
       case Failure(NonFatal(e)) => logger.error("Error!", e)
@@ -112,7 +110,6 @@ private[persist] class ProjectLock(projectName: String) extends Logging { self: 
         }
         val res = Resources(channel, lock, shutdownHook)
         resources = Some(res)
-        addShutdownHook(shutdownHook)
       Success(res)
     }
   }.flatten.map(_ => ()).recoverWith {
@@ -124,13 +121,14 @@ private[persist] class ProjectLock(projectName: String) extends Logging { self: 
       Failure(e)
   }
 
-  def release(): Try[Unit] = resources.fold[Try[Unit]](SystemError(
-    s"""$ApplicationName is not currently locked by the virtual machine.""")) { res =>
-    close(res.channel, Some(res.lock), Some(res.shutdownHook), Some(file))
+  def release(): Try[Unit] =
+    resources.fold[Try[Unit]](SystemError(
+      s"""$ApplicationName is not currently locked by the virtual machine.""")) { res =>
+
+      close(res.channel, Some(res.lock), Some(file))
   }
 
-  private[this] def close(channel: LockableChannel, lock: Option[FileLock] = None, shutdownHook: Option[Thread] = None,
-                          file: Option[File] = None): Try[Unit] = {
+  private[this] def close(channel: LockableChannel, lock: Option[FileLock] = None, file: Option[File] = None): Try[Unit] = {
 
     val result = lock.fold[Try[Unit]](Success(())) { lck: FileLock =>
       Try(lck.release())
@@ -139,11 +137,6 @@ private[persist] class ProjectLock(projectName: String) extends Logging { self: 
     logIfError(Try(channel.close()))
     file.foreach(f => logIfError(Try(f.delete())))
 
-    shutdownHook.foreach { hook: Thread =>
-      logIfError(Try(removeShutdownHook(hook)))
-    }
-
     result
   }
-
 }

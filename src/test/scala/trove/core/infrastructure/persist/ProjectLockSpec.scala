@@ -66,13 +66,9 @@ class ProjectLockSpec extends FlatSpec with MockitoSugar with BeforeAndAfter wit
 
     val mockFileLock: FileLock = mock[FileLock]
 
-    var shutdownHooksAdded: List[Thread] = List.empty
-    var shutdownHooksRemoved: List[Thread] = List.empty
     var logErrorArgs: List[Try[Unit]] = List.empty
 
     val throwExceptionOnCreateRandomAccessFile = false
-    val throwExceptionOnAddShutdownHook = false
-    val throwExceptionOnRemoveShutdownHook = false
 
     val projectLock: ProjectLock = new ProjectLock(projectName) with EnvironmentOps {
 
@@ -94,23 +90,11 @@ class ProjectLockSpec extends FlatSpec with MockitoSugar with BeforeAndAfter wit
         mockChannel
       }
 
-      override def addShutdownHook(thread: Thread): Unit = if(throwExceptionOnAddShutdownHook) {
-        throw new Exception("doom")
-      } else {
-        shutdownHooksAdded = thread +: shutdownHooksAdded
-      }
-
-      override def removeShutdownHook(thread: Thread): Unit = if(throwExceptionOnRemoveShutdownHook) {
-        throw new Exception("doom")
-      } else {
-        shutdownHooksRemoved = thread +: shutdownHooksRemoved
-      }
-
       override def logIfError(result: Try[Unit]): Unit = logErrorArgs = result +: logErrorArgs
     }
   }
 
-  "ProjectLock" should "allocate resources and add shutdown hook when lock is called" in new Fixture {
+  "ProjectLock" should "allocate resources when lock is called" in new Fixture {
     when(mockChannel.tryLock()).thenReturn(mockFileLock)
     val result: Try[Unit] = projectLock.lock()
     result.isSuccess shouldBe true
@@ -120,13 +104,11 @@ class ProjectLockSpec extends FlatSpec with MockitoSugar with BeforeAndAfter wit
     channelsCreated should contain theSameElementsAs List(mockRandomAccessFile)
 
     verify(mockChannel, times(1)).tryLock()
-    shutdownHooksAdded.size shouldBe 1
 
     verify(mockFileLock, never()).release()
     verify(mockFileLock, never()).close()
     verify(mockChannel, never()).close()
     verify(mockFile, never()).delete()
-    shutdownHooksRemoved shouldBe empty
 
     logErrorArgs shouldBe empty
 }
@@ -143,14 +125,12 @@ class ProjectLockSpec extends FlatSpec with MockitoSugar with BeforeAndAfter wit
     channelsCreated should contain theSameElementsAs List(mockRandomAccessFile)
 
     verify(mockChannel, times(1)).tryLock()
-    shutdownHooksAdded shouldBe empty
 
     verify(mockFileLock, never()).release()
     verify(mockFileLock, never()).close()
 
     verify(mockChannel, times(1)).close()
     verify(mockFile, never()).delete()
-    shutdownHooksRemoved shouldBe empty
 
     logErrorArgs should not be empty
     val failures: List[Try[Unit]] = logErrorArgs.filter(_.isFailure)
@@ -170,14 +150,12 @@ class ProjectLockSpec extends FlatSpec with MockitoSugar with BeforeAndAfter wit
     channelsCreated shouldBe empty
 
     verify(mockChannel, never()).tryLock()
-    shutdownHooksAdded shouldBe empty
 
     verify(mockFileLock, never()).release()
     verify(mockFileLock, never()).close()
 
     verify(mockChannel, never()).close()
     verify(mockFile, never()).delete()
-    shutdownHooksRemoved shouldBe empty
 
     logErrorArgs shouldBe empty
   }
@@ -196,47 +174,19 @@ class ProjectLockSpec extends FlatSpec with MockitoSugar with BeforeAndAfter wit
     channelsCreated should contain theSameElementsAs List(mockRandomAccessFile)
 
     verify(mockChannel, times(1)).tryLock()
-    shutdownHooksAdded shouldBe empty
 
     verify(mockFileLock, never()).release()
     verify(mockFileLock, never()).close()
 
     verify(mockChannel, times(1)).close()
     verify(mockFile, never()).delete()
-    shutdownHooksRemoved shouldBe empty
 
     logErrorArgs should not be empty
     logErrorArgs.filter(_.isFailure) shouldBe empty
   }
 
 
-  it should "return failure and release all resources if an exception is thrown while it is trying to add shutdown hook" in new Fixture {
-    override val throwExceptionOnAddShutdownHook: Boolean = true
-    when(mockChannel.tryLock()).thenReturn(mockFileLock)
-    val result: Try[Unit] = projectLock.lock()
-    result match {
-      case Failure(_: SystemException) => // no op
-      case _ => fail("wrong result when locking")
-    }
-
-    filesCreated should contain theSameElementsAs List((expectedDirectory, expectedFilename))
-    randomAccessFilesCreated should contain theSameElementsAs List(mockFile)
-    channelsCreated should contain theSameElementsAs List(mockRandomAccessFile)
-
-    verify(mockChannel, times(1)).tryLock()
-    shutdownHooksAdded shouldBe empty
-
-    verify(mockFileLock, times(1)).release()
-    verify(mockFileLock, times(1)).close()
-    verify(mockChannel, times(1)).close()
-    verify(mockFile, times(1)).delete()
-
-    logErrorArgs should not be empty
-    logErrorArgs.filter(_.isFailure) shouldBe empty
-  }
-
-
-  it should "release resources, remove shutdown hook, and delete file when release is called" in new Fixture {
+  it should "release resources and delete file when release is called" in new Fixture {
     when(mockChannel.tryLock()).thenReturn(mockFileLock)
     val result: Try[Unit] = projectLock.lock()
     result.isSuccess shouldBe true
@@ -248,7 +198,6 @@ class ProjectLockSpec extends FlatSpec with MockitoSugar with BeforeAndAfter wit
     verify(mockFileLock, times(1)).close()
     verify(mockChannel, times(1)).close()
     verify(mockFile, times(1)).delete()
-    shutdownHooksRemoved.size shouldBe 1
 
     logErrorArgs should not be empty
     logErrorArgs.filter(_.isFailure) shouldBe empty
@@ -268,7 +217,6 @@ class ProjectLockSpec extends FlatSpec with MockitoSugar with BeforeAndAfter wit
     verify(mockFileLock, times(1)).release()
     verify(mockChannel, times(1)).close()
     verify(mockFile, times(1)).delete()
-    shutdownHooksRemoved.size shouldBe 1
 
     logErrorArgs should not be empty
     logErrorArgs.filter(_.isFailure) shouldBe empty
@@ -286,7 +234,6 @@ class ProjectLockSpec extends FlatSpec with MockitoSugar with BeforeAndAfter wit
     verify(mockFileLock, times(1)).close()
     verify(mockChannel, times(1)).close()
     verify(mockFile, times(1)).delete()
-    shutdownHooksRemoved.size shouldBe 1
 
     logErrorArgs should not be empty
     val failures: List[Try[Unit]] = logErrorArgs.filter(_.isFailure)
@@ -310,7 +257,6 @@ class ProjectLockSpec extends FlatSpec with MockitoSugar with BeforeAndAfter wit
     verify(mockFileLock, times(1)).close()
     verify(mockChannel, times(1)).close()
     verify(mockFile, times(1)).delete()
-    shutdownHooksRemoved.size shouldBe 1
 
     logErrorArgs should not be empty
     val failures: List[Try[Unit]] = logErrorArgs.filter(_.isFailure)
@@ -319,52 +265,5 @@ class ProjectLockSpec extends FlatSpec with MockitoSugar with BeforeAndAfter wit
       case Failure(_: RuntimeException) => // no op
       case a: Any => fail(s"Wrong logged result: $a")
     }
-  }
-
-  it should "log error after previously performing other expected cleanup if exception is thrown removing shutdown hook" in new Fixture {
-    when(mockChannel.tryLock()).thenReturn(mockFileLock)
-    override val throwExceptionOnRemoveShutdownHook: Boolean = true
-
-    val result: Try[Unit] = projectLock.lock()
-    result.isSuccess shouldBe true
-    val releaseResult: Try[Unit] = projectLock.release()
-    releaseResult.isSuccess shouldBe true
-
-    verify(mockFileLock, times(1)).close()
-    verify(mockFileLock, times(1)).close()
-    verify(mockChannel, times(1)).close()
-    verify(mockFile, times(1)).delete()
-    shutdownHooksRemoved.isEmpty shouldBe true
-
-    logErrorArgs should not be empty
-    val failures: List[Try[Unit]] = logErrorArgs.filter(_.isFailure)
-    failures.size shouldBe 1
-    failures.head match {
-      case Failure(_: Exception) => // no op
-      case a: Any => fail(s"Wrong logged result: $a")
-    }
-  }
-
-  it should "release resources, remove shutdown hook, and delete file when shutdown hook is called" in new Fixture {
-    when(mockChannel.tryLock()).thenReturn(mockFileLock)
-    val result: Try[Unit] = projectLock.lock()
-    result.isSuccess shouldBe true
-
-    shutdownHooksAdded.size shouldBe 1
-    shutdownHooksAdded.head.run()
-
-    verify(mockFileLock, times(1)).release()
-    verify(mockFileLock, times(1)).close()
-    verify(mockChannel, times(1)).close()
-    verify(mockFile, times(1)).delete()
-
-    logErrorArgs should not be empty
-    val failures: List[Try[Unit]] = logErrorArgs.filter(_.isFailure)
-    failures shouldBe empty
-  }
-
-  "shutdown hook" should "do everything release does except remove itself from jvm shutdown hooks" in new Fixture {
-    //ejf-fixMe: implement
-    fail("Not implemented")
   }
 }

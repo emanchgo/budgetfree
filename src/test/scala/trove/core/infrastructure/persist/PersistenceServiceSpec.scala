@@ -44,7 +44,7 @@ it should "fail with a PersistenceError if the wrong database version exists and
 it should "fail with a PersistenceError if there are too many rows in the database version table and clean up the project lock"
 it should "set the current project upon successful project opening"
 it should "open the database with all the right settings"
-it should "add a shutdown hook to close the database if the process were to shut down"
+it should "add a shutdown hook to close the database and delete the project lock if the process were to shut down"
 
 "closeCurrentProject" should "clear the current project upon successful project closing"
 it should "close the database, release the project lock, and remove the shutdown hook upon successful project closing"
