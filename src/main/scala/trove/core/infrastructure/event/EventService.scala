@@ -48,15 +48,15 @@ object EventService extends Logging {
   }
 
   private[event] def subscribeEvents(listener: EventListener): Unit = {
-    if(!subscriptions.contains(listener)) {
+
+    subscriptions.get(listener).fold[Unit]{
       logger.debug(s"Adding subscription for listener ${listener.toString} : ${listener.getClass.getName}")
-      val props = Props(classOf[Subscriber], listener)
+      val props: Props = Props(classOf[Subscriber], listener)
       val subscriber = system.actorOf(props)
       system.eventStream.subscribe(subscriber, classOf[UntypedEvent])
       subscriptions += listener -> subscriber
       logger.debug(s"Subscriber map size: ${subscriptions.size}")
-    }
-    else {
+    } { _ =>
       logger.warn(s"Listener ${listener.toString} : ${listener.getClass.getName} is already subscribed for events")
     }
   }

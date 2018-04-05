@@ -60,6 +60,14 @@ class EventServiceSpec extends FlatSpec with MockitoSugar with Matchers {
     }
   }
 
+  "subscribe" should "only deliver events to a subscriber once if it is subscribed more than once" in new Fixture {
+    listener.subscribe()
+    currentlySubscribed shouldBe true
+    EventService.publish(TestEvent(1))
+    Thread.sleep(250)
+    ids shouldBe List(1)
+  }
+
   "unsubscribe" should "work correctly" in new Fixture {
     listener.subscribe()
     currentlySubscribed shouldBe true
@@ -83,5 +91,9 @@ class EventServiceSpec extends FlatSpec with MockitoSugar with Matchers {
       currentlySubscribed shouldBe true
       ids shouldBe empty
     }
+  }
+
+  it should "have no effect on a listener that is not subscribed" in new Fixture {
+    listener.unsubscribe()
   }
 }
