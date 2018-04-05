@@ -28,10 +28,11 @@ import trove.core.infrastructure.event.{Event, EventListener}
 import scalafx.application.Platform
 
 // Wrapper to ensure we update UI on event dispatch thread.
+// NOTE that unsubscribe MUST be called when a listener is de-allocated and garbage collection is intended.
 trait UIEventListener extends EventListener {
 
     final override def onEvent: PartialFunction[Event,Unit] = {
-      case e: Event =>
+      case e =>
         if(onReceive.isDefinedAt(e)) {
           Platform.runLater {
             onReceive(e)
