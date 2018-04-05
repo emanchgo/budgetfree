@@ -41,5 +41,5 @@ trait UIEventListener extends EventListener {
 
     def onReceive: PartialFunction[Event,Unit]
     
-    subscribeEvents()
+    subscribe()
 }

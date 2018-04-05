@@ -29,14 +29,19 @@ package object event {
   
   trait EventListener {
     
-    final def subscribeEvents() {
+    final def subscribe(): Unit = {
       EventService.subscribeEvents(this)
+      _subscribed()
     }
     
-    final def unsubscribeEvents() {
+    final def unsubscribe(): Unit = {
       EventService.unsubscribeEvents(this)
+      _unsubscribed()
     }
-  
+
+    private[event] def _subscribed(): Unit = {}
+    private[event] def _unsubscribed(): Unit = {}
+
     def onEvent: PartialFunction[Event,Unit]
   }
 }

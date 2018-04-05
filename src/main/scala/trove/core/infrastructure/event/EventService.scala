@@ -38,7 +38,7 @@ object EventService extends Logging {
 
   @volatile private[this] var subscriptions = Map.empty[EventListener,ActorRef]
 
-  def publish(event: Event) {
+  def publish(event: Event): Unit = {
     system.eventStream.publish(UntypedEvent(event))
   }
 
@@ -47,7 +47,7 @@ object EventService extends Logging {
     Await.result(system.terminate(), Duration.Inf)
   }
 
-  private[event] def subscribeEvents(listener: EventListener) {
+  private[event] def subscribeEvents(listener: EventListener): Unit = {
     if(!subscriptions.contains(listener)) {
       logger.debug(s"Adding subscription for listener ${listener.toString} : ${listener.getClass.getName}")
       val props = Props(classOf[Subscriber], listener)
@@ -61,10 +61,10 @@ object EventService extends Logging {
     }
   }
 
-  private[event] def unsubscribeEvents(listener: EventListener) {
-    subscriptions.get(listener).foreach { _ =>
+  private[event] def unsubscribeEvents(listener: EventListener): Unit = {
+    subscriptions.get(listener).foreach { actorRef =>
       logger.debug(s"Removing subscription for listener ${listener.toString} : ${listener.getClass.getName}")
-      system.stop(_)
+      system.stop(actorRef)
     }
     subscriptions -= listener
     logger.debug(s"Subscriber map size: ${subscriptions.size}")
