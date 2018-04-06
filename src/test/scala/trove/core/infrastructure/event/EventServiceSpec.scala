@@ -64,7 +64,7 @@ class EventServiceSpec extends FlatSpec with MockitoSugar with Matchers {
     listener.subscribe()
     currentlySubscribed shouldBe true
     EventService.publish(TestEvent(1))
-    Thread.sleep(250)
+    Thread.sleep(1000)
     ids shouldBe List(1)
   }
 
@@ -84,7 +84,7 @@ class EventServiceSpec extends FlatSpec with MockitoSugar with Matchers {
       currentlySubscribed shouldBe false
     }
 
-    Thread.sleep(250)
+    Thread.sleep(1000)
     EventService.publish(TestEvent(3))
     listener.subscribe()
     eventually {

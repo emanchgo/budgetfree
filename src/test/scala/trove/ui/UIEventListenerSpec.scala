@@ -23,14 +23,62 @@
 
 package trove.ui
 
-//ejf-fixMe: implement
-class UIEventListenerSpec {
-/*
-UIEventListener
-===============
-"UIEventListener" should "propagate events to the JavaFX thread"
-it should "only forward events for which the onReceive partial function has a mapping"
-it should "unsubscribe when requested"
+import org.scalatest.{FlatSpec, Matchers}
+import org.scalatest.concurrent.Eventually._
+import org.scalatest.mockito.MockitoSugar
+import trove.core.infrastructure.event.{Event, EventService}
 
- */
+class UIEventListenerSpec extends FlatSpec with MockitoSugar with Matchers {
+
+  case class EventA(id: Int) extends Event
+  case class EventB(id: Int) extends Event
+
+  class Fixture {
+
+    @volatile var currentlySubscribed = false
+    @volatile var events: List[Event] = List.empty
+
+    val listener: UIEventListener = new UIEventListener {
+      override def onReceive: PartialFunction[Event, Unit] = {
+        case ev@EventA(_) =>
+          events = ev :: events
+      }
+
+      override def _subscribed(): Unit = {
+        currentlySubscribed = true
+      }
+
+      override def _unsubscribed(): Unit = {
+        currentlySubscribed = false
+      }
+
+      protected override def _runLater(op: => Unit): Unit = op
+    }
+  }
+
+  it should "automatically subscribe and propagate events" in new Fixture {
+    currentlySubscribed shouldBe true
+    EventService.publish(EventA(1))
+    EventService.publish(EventA(2))
+    eventually {
+      events shouldBe List(EventA(2), EventA(1))
+    }
+  }
+
+  it should "only forward events for which the onReceive partial function has a mapping" in new Fixture {
+    EventService.publish(EventA(1))
+    EventService.publish(EventB(2))
+    Thread.sleep(1000)
+    eventually {
+      events shouldBe List(EventA(1))
+    }
+  }
+
+  it should "unsubscribe when requested" in new Fixture {
+    listener.unsubscribe()
+    currentlySubscribed shouldBe false
+    Thread.sleep(1000)
+    EventService.publish(EventA(1))
+    events shouldBe empty
+  }
 }
