@@ -43,6 +43,9 @@ package object ui extends Logging {
   private[ui] val ApplicationIconImage64 = getImage(ApplicationIconPath, 64)
   private[ui] val ApplicationIconImage96 = getImage(ApplicationIconPath, 96)
 
+  private[ui] val ActiveProjectTabImageSize = 40
+  private[ui] val ActiveProjectTabHeight = ActiveProjectTabImageSize + 8
+
   private[ui] def getImage(path: String, size: Int): Image = {
     val url = getClass.getClassLoader.getResource(path)
     new Image(url.toExternalForm, size, size, true, true)

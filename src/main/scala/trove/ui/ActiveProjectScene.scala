@@ -88,43 +88,44 @@ private[ui] class ActiveProjectScene(projectName: String) extends Scene {
     }
   }
 
+  //ejf-fixMe: 36x36 px icons?
   private[this] val tabPane = new TabPane {
     tabs = Seq(
       new Tab {
         text = "HOME"
         tooltip = "High level view"
         closable = false
-        tabMaxHeight = 56
-        graphic = new ImageView(getImage("pie-chart-48.png", 48))
-      },
-      new Tab {
-        text = "CASH FLOWS"
-        tooltip = "Create cash flow plans"
-        closable = false
-        tabMaxHeight = 56
-        graphic = new ImageView(getImage("plumbing-48.png", 48))
+        tabMaxHeight = ActiveProjectTabHeight
+        graphic = new ImageView(getImage("pie-chart-40.png", ActiveProjectTabImageSize))
       },
       new Tab {
         text = "TRACKING"
         tooltip = "Track individual transactions"
         closable = false
         content = trackingPane
-        tabMaxHeight = 56
-        graphic = new ImageView(getImage("ledger-48.png", 48))
+        tabMaxHeight = ActiveProjectTabHeight
+        graphic = new ImageView(getImage("ledger-40.png", ActiveProjectTabImageSize))
+      },
+      new Tab {
+        text = "CASH FLOWS"
+        tooltip = "Create cash flow plans"
+        closable = false
+        tabMaxHeight = ActiveProjectTabHeight
+        graphic = new ImageView(getImage("plumbing-40.png", ActiveProjectTabImageSize))
       },
       new Tab {
         text = "REPORTS"
         tooltip = "Create and view customized reports"
         closable = false
-        tabMaxHeight = 56
-        graphic = new ImageView(getImage("report-card-48.png", 48))
+        tabMaxHeight = ActiveProjectTabHeight
+        graphic = new ImageView(getImage("report-card-40.png", ActiveProjectTabImageSize))
       },
       new Tab {
         text = "TROVE"
-        tooltip = "See how you stand on your savings goals"
+        tooltip = "See where you stand on your savings goals"
         closable = false
-        tabMaxHeight = 56
-        graphic = new ImageView(getImage("gold-pot-48.png", 48))
+        tabMaxHeight = ActiveProjectTabHeight
+        graphic = new ImageView(getImage("gold-pot-40.png", ActiveProjectTabImageSize))
       }
     )
   }
