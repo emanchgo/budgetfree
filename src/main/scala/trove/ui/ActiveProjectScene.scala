@@ -88,7 +88,6 @@ private[ui] class ActiveProjectScene(projectName: String) extends Scene {
     }
   }
 
-  //ejf-fixMe: 36x36 px icons?
   private[this] val tabPane = new TabPane {
     tabs = Seq(
       new Tab {

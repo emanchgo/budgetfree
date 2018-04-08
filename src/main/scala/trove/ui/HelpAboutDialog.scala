@@ -23,17 +23,17 @@
 
 package trove.ui
 
-import trove.constants.ApplicationVersion
-import trove.ui.ButtonTypes._
-import trove.ui.fxext.AppModalAlert
-
-import scala.io.Source
 import scalafx.Includes._
 import scalafx.event.ActionEvent
 import scalafx.scene.control.Alert.AlertType
 import scalafx.scene.control._
 import scalafx.scene.image.ImageView
 import scalafx.scene.layout.VBox
+import trove.constants.ApplicationVersion
+import trove.ui.ButtonTypes._
+import trove.ui.fxext.AppModalAlert
+
+import scala.io.Source
 
 private[ui] class HelpAboutDialog extends AppModalAlert(AlertType.Information) {
   graphic = new ImageView(ApplicationIconImage64)
@@ -94,8 +94,9 @@ private[ui] class HelpAboutDialog extends AppModalAlert(AlertType.Information) {
 
   dialogPane().content = theContent
   buttonTypes = Seq(Ok)
+
   // Linux workaround
-  //resizable = true
-  //dialogPane().setPrefSize(600, 400) // I tried setting the width/height values and the width didn't work.
-  //resizable = false
+  resizable = true
+  dialogPane().setPrefSize(600, 400)
+  resizable = false
 }
