@@ -32,6 +32,8 @@ scalaVersion := "2.12.4"
 
 scalacOptions ++= Seq("-deprecation", "-feature")
 
+coverageEnabled := true
+
 // Versions
 val akkaVersion          = "2.5.11"
 val grizzledSlf4jVersion = "1.3.2"

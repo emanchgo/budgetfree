@@ -55,8 +55,8 @@ private[ui] class HelpAboutDialog extends AppModalAlert(AlertType.Information) {
   }
   val thirdPartyLicenseLinkLabel = Label("This software incorporates many open source libraries.")
 
-  private[this] def thirdPartyLicenseTextArea = {
-    val fileContents = Source.fromFile(ThirdPartyLicenseUrlTextUri).getLines.mkString("\n")
+  private[this] def thirdPartyLicenseTextArea: TextArea = {
+    val fileContents = Source.fromURL(ThirdPartyLicenseUrlTextUrl).getLines.mkString("\n")
     val ta = new TextArea(fileContents)
     ta.editable = false
     ta

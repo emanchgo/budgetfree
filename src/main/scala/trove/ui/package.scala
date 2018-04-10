@@ -24,6 +24,10 @@
 package trove
 
 import grizzled.slf4j.Logging
+import scalafx.scene.control.Alert.AlertType
+import scalafx.scene.control.{ButtonBar, ButtonType, Label}
+import scalafx.scene.image.Image
+import scalafx.scene.paint.Color
 import trove.constants._
 import trove.exceptional.{FailQuietly, ValidationException}
 import trove.ui.fxext.AppModalAlert
@@ -32,10 +36,6 @@ import scala.reflect.ClassTag
 import scala.reflect.runtime.{universe => ru}
 import scala.util.control.NonFatal
 import scala.util.{Failure, Try}
-import scalafx.scene.control.Alert.AlertType
-import scalafx.scene.control.{ButtonBar, ButtonType, Label}
-import scalafx.scene.image.Image
-import scalafx.scene.paint.Color
 
 package object ui extends Logging {
 
@@ -52,7 +52,7 @@ package object ui extends Logging {
   }
 
   private[this] val ThirdPartyLicenseTextPath = "THIRD_PARTY_LICENSING"
-  private[ui] val ThirdPartyLicenseUrlTextUri = getClass.getClassLoader.getResource(ThirdPartyLicenseTextPath).toURI
+  private[ui] val ThirdPartyLicenseUrlTextUrl = getClass.getClassLoader.getResource(ThirdPartyLicenseTextPath)
 
   def blankLabel = Label(" ")
 
