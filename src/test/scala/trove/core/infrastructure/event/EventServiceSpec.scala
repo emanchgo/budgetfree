@@ -37,7 +37,7 @@ class EventServiceSpec extends FlatSpec with MockitoSugar with Matchers {
     @volatile var ids: List[Int] = List.empty
 
     class Listener extends EventListener {
-      def onEvent: PartialFunction[Event, Unit] = {
+      override def onEvent: PartialFunction[Event, Unit] = {
         case TestEvent(id) =>
           ids = id :: ids
       }

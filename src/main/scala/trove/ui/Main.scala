@@ -92,7 +92,7 @@ private[ui] object Main extends JFXApp with Logging {
     }
   }
 
-  def showHelpAboutDialog() {
+  def showHelpAboutDialog(): Unit = {
     logger.debug("showHelpAboutDialog called")
     new HelpAboutDialog().showAndWait()
   }
@@ -109,7 +109,7 @@ private[ui] object Main extends JFXApp with Logging {
     result.map(bt => if(bt == Yes) true else false).fold(false)(identity)
   }
 
-  def shutdown() {
+  def shutdown(): Unit = {
     dialogOnError(Trove.shutdown())
     logger.debug("Application closing")
     Platform.exit()

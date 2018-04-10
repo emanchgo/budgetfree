@@ -34,10 +34,7 @@ private[ui] trait UIEventListener extends EventListener {
     protected def _runLater(op: => Unit): Unit = Platform.runLater(op)
 
     final override def onEvent: PartialFunction[Event,Unit] = {
-      case e =>
-        if(onReceive.isDefinedAt(e)) {
-          _runLater(onReceive(e))
-        }
+      case e if onReceive.isDefinedAt(e) => _runLater(onReceive(e))
     }
 
     def onReceive: PartialFunction[Event,Unit]

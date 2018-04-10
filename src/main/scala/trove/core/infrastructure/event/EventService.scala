@@ -74,7 +74,7 @@ object EventService extends Logging {
 
   sealed class Subscriber(listener: EventListener) extends Actor {
     override def receive: PartialFunction[Any, Unit] = {
-      case UntypedEvent(event) => listener.onEvent(event)
+      case UntypedEvent(event) if listener.onEvent.isDefinedAt(event) => listener.onEvent(event)
     }
   }
 }
