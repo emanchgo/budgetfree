@@ -69,9 +69,10 @@ private[ui] class HelpAboutDialog extends AppModalAlert(AlertType.Information) {
     tooltip = "Click here for third-party licensing information"
     onAction = _ => new AppModalAlert(AlertType.Information) {
       headerText = "Third Party Licensing"
+      buttonTypes = Seq(Ok)
       dialogPane().content = thirdPartyLicenseTextArea
       dialogPane().setPrefSize(700, 800) // I tried setting the width/height values and the width didn't work.
-      buttonTypes = Seq(Ok)
+      resizable = false
     }.showAndWait()
   }
 
