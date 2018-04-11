@@ -98,6 +98,9 @@ private[ui] class HelpAboutDialog extends AppModalAlert(AlertType.Information) {
 
   // Linux workaround
   resizable = true
-  dialogPane().setPrefSize(600, 400)
+  //dialogPane().setPrefSize(600, 400)
+  dialogPane().resize(600, 400)
   resizable = false
+  dialogPane().requestLayout()
+  dialogPane().requestFocus()
 }
