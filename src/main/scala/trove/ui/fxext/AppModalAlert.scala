@@ -24,12 +24,11 @@
 package trove.ui.fxext
 
 
-import trove.constants.ApplicationName
-import trove.ui.Main
-
 import scalafx.scene.control.Alert
 import scalafx.scene.control.Alert.AlertType
 import scalafx.stage.Modality.ApplicationModal
+import trove.constants.ApplicationName
+import trove.ui.Main
 
 private[ui] abstract class AppModalAlert(alertType: AlertType) extends Alert(alertType) {
   title = ApplicationName
