@@ -35,6 +35,7 @@ it should "strip filename suffix"
 it should "return a sorted list of project names"
 
 "openProject" should "create a project lock"
+it should "return failure if another project is already open"
 it should "return failure if unable to obtain project lock"
 it should "return failure and clean up project lock if unable to open database"
 it should "create all tables if creating a new database"
