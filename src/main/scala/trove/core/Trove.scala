@@ -26,7 +26,7 @@ package trove.core
 import akka.actor.ActorSystem
 import grizzled.slf4j.Logging
 import trove.core.infrastructure.event.EventService
-import trove.core.infrastructure.persist.PersistenceManager
+import trove.core.infrastructure.persist.PersistenceService
 import trove.events.ProjectChanged
 import trove.exceptional.ValidationError
 
@@ -38,17 +38,18 @@ object Trove extends Logging {
   private[this] val actorSystem: ActorSystem = ActorSystem("Trove_Actor_System")
 
   val eventService: EventService = EventService(actorSystem)
+  val persistenceService: PersistenceService = PersistenceService()
 
   // For project name validation
   val ValidProjectNameChars: String = "^[a-zA-Z0-9_\\-]*$"
 
   def startup(): Try[Unit] = Success(Unit)
 
-  def listProjectNames: Seq[String] = PersistenceManager.listProjectNames
+  def listProjectNames: Try[Seq[String]] = persistenceService.listProjects()
 
   def apply(projectName: String): Try[Trove] =
     if (projectName.matches(ValidProjectNameChars)) {
-      PersistenceManager.openProject(projectName).map { _ =>
+      persistenceService.open(projectName).map { _ =>
         logger.debug(s"Database for project $projectName successfully opened.")
         val result = new Trove(projectName)
         eventService.publish(ProjectChanged(Some(projectName)))
@@ -56,7 +57,7 @@ object Trove extends Logging {
       }.recoverWith {
         case NonFatal(e) =>
           logger.error(s"Project with name $projectName could not be initialized. Closing project (if it was open).")
-          PersistenceManager.closeCurrentProject
+          persistenceService.closeCurrentProject()
           Failure(e)
       }
     }
@@ -64,11 +65,11 @@ object Trove extends Logging {
       ValidationError(s"""Invalid project name: "$projectName." Valid characters are US-ASCII alphanumeric characters, '_', and '-'.""")
     }
 
-  def closeCurrentProject(): Try[Unit] = PersistenceManager.closeCurrentProject.map { _ =>
+  def closeCurrentProject(): Try[Unit] = persistenceService.closeCurrentProject().map { _ =>
     eventService.publish(ProjectChanged(None))
   }
 
-  def shutdown(): Try[Unit] = PersistenceManager.closeCurrentProject.flatMap { _ =>
+  def shutdown(): Try[Unit] = persistenceService.closeCurrentProject().flatMap { _ =>
     Try(eventService.shutdown()).map(_ => Unit)
   }
 }

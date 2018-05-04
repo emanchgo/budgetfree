@@ -41,7 +41,7 @@ private[persist] object ProjectLock {
 
   val lockfileSuffix: String = ".lck"
 
-  private case class Resources(channel: LockableChannel, lock: FileLock, shutdownHook: Thread)
+  private case class Resources(channel: LockableChannel, lock: FileLock)
 
   def constructLockfileName(projectName: String): String = s"$projectName$lockfileSuffix"
 
@@ -103,12 +103,7 @@ private[persist] class ProjectLock(projectName: String) extends Logging { self: 
     } {
       lock =>
         logger.debug(s"Acquired single application instance lock for project $projectName.")
-        val shutdownHook = new Thread {
-          override def run(): Unit = {
-            logIfError(release())
-          }
-        }
-        val res = Resources(channel, lock, shutdownHook)
+        val res = Resources(channel, lock)
         resources = Some(res)
       Success(res)
     }

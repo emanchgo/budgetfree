@@ -26,7 +26,7 @@ package trove.core.infrastructure.persist
 import java.io.File
 
 import grizzled.slf4j.Logging
-import slick.jdbc.SQLiteProfile.api._
+import slick.jdbc.SQLiteProfile.backend._
 import slick.jdbc.{DriverDataSource, SQLiteProfile}
 import slick.util.ClassLoaderUtil
 import trove.constants.ProjectsHomeDir
@@ -38,46 +38,71 @@ import scala.concurrent.{Await, Future}
 import scala.util.control.NonFatal
 import scala.util.{Failure, Success, Try}
 
-private[core] object PersistenceManager extends Logging {
+private[persist] sealed trait LockReleasing extends Logging {
+  final def releaseLock(lock: ProjectLock): Unit =
+    lock.release() match {
+      case Success(_) =>
+      case Failure(NonFatal(e)) => logger.error("Error releasing project lock", e)
+      case Failure(e) => throw e
+    }
+}
 
-  import SQLiteProfile.backend._
+private[persist] sealed trait ShutdownHook extends Logging { self : PersistenceService =>
 
+  private[persist] val shutdownHook = new Thread() {
+    override def run(): Unit = {
+      logger.warn(s"Shutdown hook executing")
+      closeCurrentProject() match {
+        case Success(_) =>
+        case Failure(NonFatal(e)) => logger.error("Shutdown hook was unable to execute for persistence service", e)
+        case Failure(e) => throw e
+      }
+    }
+  }
+  Runtime.getRuntime.addShutdownHook(shutdownHook)
+}
+
+private[core] class Project(val name: String, lock: ProjectLock, db: DatabaseDef) extends LockReleasing with Logging {
+
+  def close(): Unit = {
+    db.close()
+    logger.debug(s"Database for project $name closed")
+    releaseLock(lock)
+    logger.debug(s"Lock for project $name released")
+    logger.info(s"Closed project $name")
+  }
+}
+
+private[core] trait PersistenceService {
   val JdbcPrefix = "jdbc:sqlite:"
   val DbFilenameSuffix: String = ".sqlite3"
+
+  def listProjects(): Try[Seq[String]]
+  def open(projectName: String): Try[Project]
+  def closeCurrentProject(): Try[Unit]
+}
+
+private[core] object PersistenceService {
+
+  private[this] lazy val instance = new PersistenceServiceImpl
+
+  def apply(): PersistenceService = instance
+}
+
+private[core] class PersistenceServiceImpl extends PersistenceService with LockReleasing with ShutdownHook with Logging {
+
+  import slick.jdbc.SQLiteProfile.api._
+  import slick.jdbc.SQLiteProfile.backend._
 
   // The current active project
   @volatile private[this] var currentProject: Option[Project] = None
 
-  // Persistence resources for a project
-  private[persist] case class Project(name: String, lock: ProjectLock, db: DatabaseDef) {
-
-    private[this] val shutdownHook = new Thread() {
-      override def run(): Unit = {
-        logger.warn(s"Shutdown hook executing for project $name")
-        db.close()
-        // lock does its own shutdown hook, but just to be sure
-        releaseLock(lock)
-      }
-    }
-
-    def close(): Unit = {
-      db.close()
-      logger.debug(s"Database for project $name closed")
-      releaseLock(lock)
-      logger.debug(s"Lock for project $name released")
-      Runtime.getRuntime.removeShutdownHook(shutdownHook)
-      logger.debug(s"Database shutdown hook removed for project $name")
-      logger.info(s"Closed project $name")
-    }
-
-    Runtime.getRuntime.addShutdownHook(shutdownHook)
-  }
-
-  def listProjectNames: Seq[String] =
+  override def listProjects(): Try[Seq[String]] = Try {
     ProjectsHomeDir.listFiles.filter(_.isFile).map(_.getName).filterNot(_.endsWith(ProjectLock.lockfileSuffix)).filterNot(_.startsWith("."))
       .map(_.stripSuffix(DbFilenameSuffix)).toSeq.sorted
+  }
 
-  def openProject(projectName: String): Try[Project] = {
+  override def open(projectName: String): Try[Project] = currentProject.fold[Try[Project]] {
     logger.debug(s"Opening project: $projectName")
 
     val projectLock: ProjectLock = ProjectLock(projectName)
@@ -124,17 +149,21 @@ private[core] object PersistenceManager extends Logging {
     }
 
     projectResult
+
+  } (prj => PersistenceError(s"Unable to open project - ${prj.name} is currently open"))
+
+
+  override def closeCurrentProject(): Try[Unit] =
+    currentProject.fold[Try[Unit]](Success(())) { project: Project =>
+      Try(project.close()).map { _ =>
+        currentProject = None
+      }.recoverWith {
+        case NonFatal(e) =>
+          logger.error("Error closing project")
+          Failure(e)
+      }
   }
 
-  def closeCurrentProject: Try[Unit] = currentProject.fold[Try[Unit]](Success(())) { project: Project =>
-    Try(project.close()).map { _ =>
-      currentProject = None
-    }.recoverWith {
-      case NonFatal(e) =>
-        logger.error("Error closing project")
-        Failure(e)
-    }
-  }
 
   private[this] def openDatabase(dbURL: String): DatabaseDef = {
     val dds = new DriverDataSource(
@@ -158,6 +187,7 @@ private[core] object PersistenceManager extends Logging {
       registerMbeans = false
     )
 
+    import SQLiteProfile.backend._
     Database.forDataSource(
       ds = dds,
       maxConnections = Some(numWorkers),
@@ -165,9 +195,4 @@ private[core] object PersistenceManager extends Logging {
       keepAliveConnection = false
     )
   }
-
-  private[this] def releaseLock(lock: ProjectLock): Unit =
-    lock.release().recover {
-      case NonFatal(ex) => logger.error("Error releasing project lock", ex)
-    }
 }

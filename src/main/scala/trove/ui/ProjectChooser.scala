@@ -37,10 +37,14 @@ import scalafx.scene.layout.BorderPane
 
 private[ui] object ProjectChooser {
   val NewProjectString = "[ New Project ]"
-  def apply(): Try[ProjectChooser] = dialogOnError(Try(new ProjectChooser()))
+  def apply(): Try[ProjectChooser] = dialogOnError {
+    Trove.listProjectNames.map { projectNames =>
+      new ProjectChooser(NewProjectString +: projectNames.toList)
+    }
+  }
 }
 
-private[ui] class ProjectChooser private extends Dialog[String] with Logging {
+private[ui] class ProjectChooser private(choiceStrings: List[String]) extends Dialog[String] with Logging {
 
   import ProjectChooser._
 
@@ -48,9 +52,6 @@ private[ui] class ProjectChooser private extends Dialog[String] with Logging {
   headerText = "Open Trove Project"
   graphic = new ImageView(ApplicationIconImage64)
   dialogPane().buttonTypes = Seq(Cancel, Open)
-
-  private[this] val projectNames = Trove.listProjectNames
-  private[this] val choiceStrings = NewProjectString +: projectNames.toList
 
   private[this] val projectChoices = new ComboBox[String] {
     items() = ObservableBuffer(choiceStrings: _*)
