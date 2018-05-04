@@ -23,6 +23,7 @@
 
 package trove.core
 
+import akka.actor.ActorSystem
 import grizzled.slf4j.Logging
 import trove.core.infrastructure.event.EventService
 import trove.core.infrastructure.persist.PersistenceManager
@@ -33,6 +34,10 @@ import scala.util.control.NonFatal
 import scala.util.{Failure, Success, Try}
 
 object Trove extends Logging {
+
+  private[this] val actorSystem: ActorSystem = ActorSystem("Trove_Actor_System")
+
+  val eventService: EventService = EventService(actorSystem)
 
   // For project name validation
   val ValidProjectNameChars: String = "^[a-zA-Z0-9_\\-]*$"
@@ -46,7 +51,7 @@ object Trove extends Logging {
       PersistenceManager.openProject(projectName).map { _ =>
         logger.debug(s"Database for project $projectName successfully opened.")
         val result = new Trove(projectName)
-        EventService.publish(ProjectChanged(Some(projectName)))
+        eventService.publish(ProjectChanged(Some(projectName)))
         result
       }.recoverWith {
         case NonFatal(e) =>
@@ -60,11 +65,11 @@ object Trove extends Logging {
     }
 
   def closeCurrentProject(): Try[Unit] = PersistenceManager.closeCurrentProject.map { _ =>
-    EventService.publish(ProjectChanged(None))
+    eventService.publish(ProjectChanged(None))
   }
 
   def shutdown(): Try[Unit] = PersistenceManager.closeCurrentProject.flatMap { _ =>
-    Try(EventService.shutdown()).map(_ => Unit)
+    Try(eventService.shutdown()).map(_ => Unit)
   }
 }
 

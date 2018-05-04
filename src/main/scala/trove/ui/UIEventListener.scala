@@ -23,9 +23,9 @@
 
 package trove.ui
 
-import trove.core.infrastructure.event.{Event, EventListener}
-
 import scalafx.application.Platform
+import trove.core.Trove
+import trove.core.infrastructure.event.{Event, EventListener}
 
 // Wrapper to ensure we update UI on event dispatch thread.
 // NOTE that unsubscribe MUST be called when a listener is de-allocated and garbage collection is intended.
@@ -39,5 +39,7 @@ private[ui] trait UIEventListener extends EventListener {
 
     def onReceive: PartialFunction[Event,Unit]
     
-    subscribe()
+    Trove.eventService.subscribe(this)
+
+    def unsubscribe(): Unit = Trove.eventService.unsubscribe(this)
 }

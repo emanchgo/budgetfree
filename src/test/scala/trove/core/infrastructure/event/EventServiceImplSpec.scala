@@ -23,70 +23,76 @@
 
 package trove.core.infrastructure.event
 
+import akka.actor.ActorSystem
 import org.scalatest.concurrent.Eventually.eventually
 import org.scalatest.mockito.MockitoSugar
 import org.scalatest.{FlatSpec, Matchers}
 
-class EventServiceSpec extends FlatSpec with MockitoSugar with Matchers {
+class EventServiceImplSpec extends FlatSpec with MockitoSugar with Matchers {
 
   case class TestEvent(id: Int) extends Event
 
+  val actorSystem: ActorSystem = ActorSystem("test")
+
   class Fixture {
+
+    val eventService = new EventServiceImpl(actorSystem)
 
     @volatile var currentlySubscribed = false
     @volatile var ids: List[Int] = List.empty
 
     class Listener extends EventListener {
+
       override def onEvent: PartialFunction[Event, Unit] = {
         case TestEvent(id) =>
           ids = id :: ids
       }
 
-      override def _subscribed(): Unit = currentlySubscribed = true
+      override def subscribed(): Unit = currentlySubscribed = true
 
-      override def _unsubscribed(): Unit = currentlySubscribed = false
+      override def unsubscribed(): Unit = currentlySubscribed = false
     }
 
     val listener: EventListener = new Listener
   }
 
   "subscribe and publish" should "work correctly" in new Fixture {
-    listener.subscribe()
+    eventService.subscribe(listener)
     currentlySubscribed shouldBe true
-    EventService.publish(TestEvent(1))
-    EventService.publish(TestEvent(2))
+    eventService.publish(TestEvent(1))
+    eventService.publish(TestEvent(2))
     eventually {
       ids shouldBe List(2, 1)
     }
   }
 
   "subscribe" should "only deliver events to a subscriber once if it is subscribed more than once" in new Fixture {
-    listener.subscribe()
+    eventService.subscribe(listener)
     currentlySubscribed shouldBe true
-    EventService.publish(TestEvent(1))
+    eventService.publish(TestEvent(1))
     Thread.sleep(1000)
     ids shouldBe List(1)
   }
 
   "unsubscribe" should "work correctly" in new Fixture {
-    listener.subscribe()
+    eventService.subscribe(listener)
     currentlySubscribed shouldBe true
-    EventService.publish(TestEvent(1))
-    EventService.publish(TestEvent(2))
+    eventService.publish(TestEvent(1))
+    eventService.publish(TestEvent(2))
     eventually {
       ids shouldBe List(2, 1)
       currentlySubscribed shouldBe true
     }
 
-    listener.unsubscribe()
+    eventService.unsubscribe(listener)
     ids = List.empty
     eventually {
       currentlySubscribed shouldBe false
     }
 
     Thread.sleep(1000)
-    EventService.publish(TestEvent(3))
-    listener.subscribe()
+    eventService.publish(TestEvent(3))
+    eventService.subscribe(listener)
     eventually {
       currentlySubscribed shouldBe true
       ids shouldBe empty
@@ -94,6 +100,6 @@ class EventServiceSpec extends FlatSpec with MockitoSugar with Matchers {
   }
 
   it should "have no effect on a listener that is not subscribed" in new Fixture {
-    listener.unsubscribe()
+    eventService.unsubscribe(listener)
   }
 }

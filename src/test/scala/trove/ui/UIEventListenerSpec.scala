@@ -23,15 +23,20 @@
 
 package trove.ui
 
-import org.scalatest.{FlatSpec, Matchers}
+import akka.actor.ActorSystem
 import org.scalatest.concurrent.Eventually._
 import org.scalatest.mockito.MockitoSugar
-import trove.core.infrastructure.event.{Event, EventService}
+import org.scalatest.time.{Minutes, Seconds, Span}
+import org.scalatest.{FlatSpec, Matchers}
+import trove.core.Trove
+import trove.core.infrastructure.event.Event
 
 class UIEventListenerSpec extends FlatSpec with MockitoSugar with Matchers {
 
   case class EventA(id: Int) extends Event
   case class EventB(id: Int) extends Event
+
+  val actorSystem = ActorSystem("test")
 
   class Fixture {
 
@@ -44,11 +49,11 @@ class UIEventListenerSpec extends FlatSpec with MockitoSugar with Matchers {
           events = ev :: events
       }
 
-      override def _subscribed(): Unit = {
+      override def subscribed(): Unit = {
         currentlySubscribed = true
       }
 
-      override def _unsubscribed(): Unit = {
+      override def unsubscribed(): Unit = {
         currentlySubscribed = false
       }
 
@@ -58,16 +63,17 @@ class UIEventListenerSpec extends FlatSpec with MockitoSugar with Matchers {
 
   it should "automatically subscribe and propagate events" in new Fixture {
     currentlySubscribed shouldBe true
-    EventService.publish(EventA(1))
-    EventService.publish(EventA(2))
+    Trove.eventService.publish(EventA(1))
+    Trove.eventService.publish(EventA(2))
+    val patience = PatienceConfig(timeout = Span(60, Minutes), interval = Span(60, Seconds))
     eventually {
       events shouldBe List(EventA(2), EventA(1))
     }
   }
 
   it should "only forward events for which the onReceive partial function has a mapping" in new Fixture {
-    EventService.publish(EventA(1))
-    EventService.publish(EventB(2))
+    Trove.eventService.publish(EventA(1))
+    Trove.eventService.publish(EventB(2))
     Thread.sleep(1000)
     eventually {
       events shouldBe List(EventA(1))
@@ -78,7 +84,7 @@ class UIEventListenerSpec extends FlatSpec with MockitoSugar with Matchers {
     listener.unsubscribe()
     currentlySubscribed shouldBe false
     Thread.sleep(1000)
-    EventService.publish(EventA(1))
+    Trove.eventService.publish(EventA(1))
     events shouldBe empty
   }
 }
