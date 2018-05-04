@@ -25,11 +25,11 @@ package trove.core.infrastructure.persist
 
 import java.io.{File, IOException, RandomAccessFile}
 import java.nio.channels.FileLock
+import java.nio.file.Files
 
 import org.mockito.Mockito._
 import org.scalatest.mockito.MockitoSugar
 import org.scalatest.{BeforeAndAfter, FlatSpec, Matchers}
-import trove.constants._
 import trove.exceptional.SystemException
 
 import scala.util.{Failure, Success, Try}
@@ -40,9 +40,10 @@ class ProjectLockSpec extends FlatSpec with MockitoSugar with BeforeAndAfter wit
 
   val userHome: String = System.getProperty("user.home")
   val projectName = "unittest"
-  val actualFile = new File(ProjectsHomeDir, constructLockfileName(projectName))
+  val tempDir: File = Files.createTempDirectory("temp").toFile
+  val actualFile = new File(tempDir, constructLockfileName(projectName))
   val separator: String = File.separator
-  val expectedDirectory = new File(s"$userHome$separator.trove${separator}projects")
+  val expectedDirectory: File = tempDir
   val expectedFilename = s"$projectName${ProjectLock.lockfileSuffix}"
 
   val UnitSuccess: Success[Unit] = Success(())
@@ -50,6 +51,9 @@ class ProjectLockSpec extends FlatSpec with MockitoSugar with BeforeAndAfter wit
   after {
     if(actualFile.exists()) {
       actualFile.deleteOnExit()
+    }
+    if(tempDir.exists()) {
+      tempDir.deleteOnExit()
     }
   }
 
@@ -70,7 +74,7 @@ class ProjectLockSpec extends FlatSpec with MockitoSugar with BeforeAndAfter wit
 
     val throwExceptionOnCreateRandomAccessFile = false
 
-    val projectLock: ProjectLock = new ProjectLock(projectName) with EnvironmentOps {
+    val projectLock: ProjectLock = new ProjectLock(tempDir, projectName) with EnvironmentOps {
 
       override def newFile(directory: File, filename: String): File = {
         filesCreated = (directory, filename) +: filesCreated

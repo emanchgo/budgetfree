@@ -105,7 +105,7 @@ private[core] class PersistenceServiceImpl extends PersistenceService with LockR
   override def open(projectName: String): Try[Project] = currentProject.fold[Try[Project]] {
     logger.debug(s"Opening project: $projectName")
 
-    val projectLock: ProjectLock = ProjectLock(projectName)
+    val projectLock: ProjectLock = ProjectLock(ProjectsHomeDir, projectName)
     val lockResult = projectLock.lock()
 
     val openResult: Try[(DatabaseDef, Boolean)] = lockResult.map { _ =>

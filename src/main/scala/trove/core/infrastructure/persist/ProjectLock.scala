@@ -59,7 +59,7 @@ private[persist] object ProjectLock {
     def logIfError(result: Try[Unit]): Unit
   }
 
-  def apply(projectName: String): ProjectLock = new ProjectLock(projectName) with EnvironmentOps {
+  def apply(projectsHomeDir: File, projectName: String): ProjectLock = new ProjectLock(projectsHomeDir, projectName) with EnvironmentOps {
     override def newFile(directory: File, filename: String): File = new File(directory, filename)
     override def newRandomAccessFile(file: File): RandomAccessFile = new RandomAccessFile(file: File, "rw")
     override def newChannel(raf: RandomAccessFile): LockableChannel = new LockableChannel(raf)
@@ -71,12 +71,12 @@ private[persist] object ProjectLock {
   }
 }
 
-private[persist] class ProjectLock(projectName: String) extends Logging { self: EnvironmentOps =>
+private[persist] class ProjectLock(projectsHomeDir: File, projectName: String) extends Logging { self: EnvironmentOps =>
 
   import ProjectLock._
 
   private[this] val lockfileName = constructLockfileName(projectName)
-  private[this] val file = newFile(ProjectsHomeDir, lockfileName)
+  private[this] val file = newFile(projectsHomeDir, lockfileName)
 
   @volatile private[this] var resources: Option[Resources] = None
 
