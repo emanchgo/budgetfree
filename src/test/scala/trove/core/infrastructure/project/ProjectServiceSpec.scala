@@ -21,18 +21,23 @@
  *  along with Trove.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package trove.core.infrastructure.persist
+package trove.core.infrastructure.project
 
 //ejf-fixMe: implement
-class PersistenceServiceSpec {
+class ProjectServiceSpec {
 /*
-Persistence manager
+Persistence service
 ===================
+"Trove persistence service" should "add shutdown hook"
+
 "listProjectNames" should "ignore directories"
 it should "ignore lock files"
 it should "ignores files whose names begin with dot"
 it should "strip filename suffix"
 it should "return a sorted list of project names"
+    ProjectsHomeDir.listFiles.filter(_.isFile).map(_.getName).filterNot(_.endsWith(ProjectLock.lockfileSuffix)).filterNot(_.startsWith("."))
+      .map(_.stripSuffix(DbFilenameSuffix)).toSeq.sorted
+
 
 "openProject" should "create a project lock"
 it should "return failure if another project is already open"
@@ -45,7 +50,6 @@ it should "fail with a PersistenceError if the wrong database version exists and
 it should "fail with a PersistenceError if there are too many rows in the database version table and clean up the project lock"
 it should "set the current project upon successful project opening"
 it should "open the database with all the right settings"
-it should "add a shutdown hook to close the database and delete the project lock if the process were to shut down"
 
 "closeCurrentProject" should "clear the current project upon successful project closing"
 it should "close the database, release the project lock, and remove the shutdown hook upon successful project closing"

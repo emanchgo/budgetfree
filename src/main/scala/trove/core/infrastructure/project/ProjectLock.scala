@@ -21,14 +21,14 @@
  *  along with Trove.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package trove.core.infrastructure.persist
+package trove.core.infrastructure.project
 
 import java.io.{File, IOException, RandomAccessFile}
 import java.nio.channels.{FileChannel, FileLock}
 
 import grizzled.slf4j.Logging
 import trove.constants._
-import trove.core.infrastructure.persist.ProjectLock.EnvironmentOps
+import trove.core.infrastructure.project.ProjectLock.EnvironmentOps
 import trove.exceptional.{SystemError, SystemException}
 
 import scala.util.control.NonFatal
@@ -37,7 +37,7 @@ import scala.util.{Failure, Success, Try}
 // Only useful where the underlying database can be opened by different programs concurrently.
 // NOTE that this class does not clean up after itself if the JVM receives a SIGTERM.
 // Cleanup should be handled externally.
-private[persist] object ProjectLock {
+private[project] object ProjectLock {
 
   val lockfileSuffix: String = ".lck"
 
@@ -71,7 +71,7 @@ private[persist] object ProjectLock {
   }
 }
 
-private[persist] class ProjectLock(projectsHomeDir: File, projectName: String) extends Logging { self: EnvironmentOps =>
+private[project] class ProjectLock(projectsHomeDir: File, projectName: String) extends Logging { self: EnvironmentOps =>
 
   import ProjectLock._
 

@@ -26,7 +26,7 @@ package trove.core
 import akka.actor.ActorSystem
 import grizzled.slf4j.Logging
 import trove.core.infrastructure.event.EventService
-import trove.core.infrastructure.persist.PersistenceService
+import trove.core.infrastructure.project.ProjectService
 import trove.events.ProjectChanged
 import trove.exceptional.ValidationError
 
@@ -38,7 +38,7 @@ object Trove extends Logging {
   private[this] val actorSystem: ActorSystem = ActorSystem("Trove_Actor_System")
 
   val eventService: EventService = EventService(actorSystem)
-  val persistenceService: PersistenceService = PersistenceService()
+  val persistenceService: ProjectService = ProjectService()
 
   // For project name validation
   val ValidProjectNameChars: String = "^[a-zA-Z0-9_\\-]*$"

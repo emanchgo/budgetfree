@@ -21,7 +21,7 @@
  *  along with Trove.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package trove.core.infrastructure.persist
+package trove.core.infrastructure.project
 
 import java.io.File
 
@@ -30,6 +30,7 @@ import slick.jdbc.SQLiteProfile.backend._
 import slick.jdbc.{DriverDataSource, SQLiteProfile}
 import slick.util.ClassLoaderUtil
 import trove.constants.ProjectsHomeDir
+import trove.core.infrastructure.persist._
 import trove.exceptional.PersistenceError
 
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -38,7 +39,7 @@ import scala.concurrent.{Await, Future}
 import scala.util.control.NonFatal
 import scala.util.{Failure, Success, Try}
 
-private[persist] sealed trait LockReleasing extends Logging {
+private[project] sealed trait LockReleasing extends Logging {
   final def releaseLock(lock: ProjectLock): Unit =
     lock.release() match {
       case Success(_) =>
@@ -47,9 +48,9 @@ private[persist] sealed trait LockReleasing extends Logging {
     }
 }
 
-private[persist] sealed trait ShutdownHook extends Logging { self : PersistenceService =>
+private[project] sealed trait ShutdownHook extends Logging { self : ProjectService =>
 
-  private[persist] val shutdownHook = new Thread() {
+  private[project] val shutdownHook = new Thread() {
     override def run(): Unit = {
       logger.warn(s"Shutdown hook executing")
       closeCurrentProject() match {
@@ -73,7 +74,7 @@ private[core] class Project(val name: String, lock: ProjectLock, db: DatabaseDef
   }
 }
 
-private[core] trait PersistenceService {
+private[core] trait ProjectService {
   val JdbcPrefix = "jdbc:sqlite:"
   val DbFilenameSuffix: String = ".sqlite3"
 
@@ -82,14 +83,14 @@ private[core] trait PersistenceService {
   def closeCurrentProject(): Try[Unit]
 }
 
-private[core] object PersistenceService {
+private[core] object ProjectService {
 
-  private[this] lazy val instance = new PersistenceServiceImpl
+  private[this] lazy val instance = new ProjectServiceImpl(ProjectsHomeDir) with ShutdownHook
 
-  def apply(): PersistenceService = instance
+  def apply(): ProjectService = instance
 }
 
-private[core] class PersistenceServiceImpl extends PersistenceService with LockReleasing with ShutdownHook with Logging {
+private[core] class ProjectServiceImpl(projectsHomeDir: File) extends ProjectService with LockReleasing with Logging {
 
   import slick.jdbc.SQLiteProfile.api._
   import slick.jdbc.SQLiteProfile.backend._
@@ -98,19 +99,19 @@ private[core] class PersistenceServiceImpl extends PersistenceService with LockR
   @volatile private[this] var currentProject: Option[Project] = None
 
   override def listProjects(): Try[Seq[String]] = Try {
-    ProjectsHomeDir.listFiles.filter(_.isFile).map(_.getName).filterNot(_.endsWith(ProjectLock.lockfileSuffix)).filterNot(_.startsWith("."))
+    projectsHomeDir.listFiles.filter(_.isFile).map(_.getName).filterNot(_.endsWith(ProjectLock.lockfileSuffix)).filterNot(_.startsWith("."))
       .map(_.stripSuffix(DbFilenameSuffix)).toSeq.sorted
   }
 
   override def open(projectName: String): Try[Project] = currentProject.fold[Try[Project]] {
     logger.debug(s"Opening project: $projectName")
 
-    val projectLock: ProjectLock = ProjectLock(ProjectsHomeDir, projectName)
+    val projectLock: ProjectLock = ProjectLock(projectsHomeDir, projectName)
     val lockResult = projectLock.lock()
 
     val openResult: Try[(DatabaseDef, Boolean)] = lockResult.map { _ =>
       val dbFileName = s"$projectName$DbFilenameSuffix"
-      val dbFile = new File(ProjectsHomeDir, dbFileName)
+      val dbFile = new File(projectsHomeDir, dbFileName)
       val create: Boolean = !dbFile.exists()
       val dbURL = s"$JdbcPrefix${dbFile.getAbsolutePath}"
       val db: DatabaseDef = openDatabase(dbURL)
@@ -154,7 +155,7 @@ private[core] class PersistenceServiceImpl extends PersistenceService with LockR
 
 
   override def closeCurrentProject(): Try[Unit] =
-    currentProject.fold[Try[Unit]](Success(())) { project: Project =>
+    currentProject.fold[Try[Unit]](PersistenceError("No current project to close")) { project: Project =>
       Try(project.close()).map { _ =>
         currentProject = None
       }.recoverWith {

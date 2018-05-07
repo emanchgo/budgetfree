@@ -30,7 +30,7 @@ import trove.models.{Account, AccountType}
 
 import scala.util.Try
 
-private[persist] object Tables {
+private[core] object Tables {
 
   case class DBVersion(id: Long)
 
