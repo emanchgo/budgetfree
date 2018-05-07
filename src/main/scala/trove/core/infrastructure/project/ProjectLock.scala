@@ -39,11 +39,11 @@ import scala.util.{Failure, Success, Try}
 // Cleanup should be handled externally.
 private[project] object ProjectLock {
 
-  val lockfileSuffix: String = ".lck"
+  val LockfileSuffix: String = ".lck"
 
   private case class Resources(channel: LockableChannel, lock: FileLock)
 
-  def constructLockfileName(projectName: String): String = s"$projectName$lockfileSuffix"
+  def constructLockfileName(projectName: String): String = s"$projectName$LockfileSuffix"
 
   class LockableChannel(raf: RandomAccessFile) {
     val channel: FileChannel = raf.getChannel
@@ -75,7 +75,7 @@ private[project] class ProjectLock(projectsHomeDir: File, projectName: String) e
 
   import ProjectLock._
 
-  private[this] val lockfileName = constructLockfileName(projectName)
+  val lockfileName: String = constructLockfileName(projectName)
   private[this] val file = newFile(projectsHomeDir, lockfileName)
 
   @volatile private[this] var resources: Option[Resources] = None
@@ -116,11 +116,15 @@ private[project] class ProjectLock(projectsHomeDir: File, projectName: String) e
       Failure(e)
   }
 
+  def isLocked: Boolean = resources.nonEmpty
+
   def release(): Try[Unit] =
     resources.fold[Try[Unit]](SystemError(
       s"""$ApplicationName is not currently locked by the virtual machine.""")) { res =>
 
-      close(res.channel, Some(res.lock), Some(file))
+      val result = close(res.channel, Some(res.lock), Some(file))
+      result.foreach(_ => resources = None)
+      result
   }
 
   private[this] def close(channel: LockableChannel, lock: Option[FileLock] = None, file: Option[File] = None): Try[Unit] = {

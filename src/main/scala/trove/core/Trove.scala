@@ -41,11 +41,11 @@ object Trove extends Logging {
   val persistenceService: ProjectService = ProjectService()
 
   // For project name validation
-  val ValidProjectNameChars: String = "^[a-zA-Z0-9_\\-]*$"
+  private[this] val ValidProjectNameChars: String = "^[a-zA-Z0-9_\\-]*$"
 
   def startup(): Try[Unit] = Success(Unit)
 
-  def listProjectNames: Try[Seq[String]] = persistenceService.listProjects()
+  def listProjectNames: Try[Seq[String]] = persistenceService.listProjects
 
   def apply(projectName: String): Try[Trove] =
     if (projectName.matches(ValidProjectNameChars)) {

@@ -29,12 +29,12 @@ import java.nio.file.Files
 
 import org.mockito.Mockito._
 import org.scalatest.mockito.MockitoSugar
-import org.scalatest.{BeforeAndAfter, FlatSpec, Matchers}
+import org.scalatest.{BeforeAndAfterEach, FlatSpec, Matchers}
 import trove.exceptional.SystemException
 
 import scala.util.{Failure, Success, Try}
 
-class ProjectLockSpec extends FlatSpec with MockitoSugar with BeforeAndAfter with Matchers {
+class ProjectLockSpec extends FlatSpec with MockitoSugar with BeforeAndAfterEach with Matchers {
 
   import ProjectLock._
 
@@ -44,11 +44,11 @@ class ProjectLockSpec extends FlatSpec with MockitoSugar with BeforeAndAfter wit
   val actualFile = new File(tempDir, constructLockfileName(projectName))
   val separator: String = File.separator
   val expectedDirectory: File = tempDir
-  val expectedFilename = s"$projectName${ProjectLock.lockfileSuffix}"
+  val expectedFilename = s"$projectName${ProjectLock.LockfileSuffix}"
 
   val UnitSuccess: Success[Unit] = Success(())
 
-  after {
+  override def afterEach(): Unit = {
     if(actualFile.exists()) {
       actualFile.deleteOnExit()
     }
@@ -196,6 +196,7 @@ class ProjectLockSpec extends FlatSpec with MockitoSugar with BeforeAndAfter wit
     result.isSuccess shouldBe true
     val releaseResult: Try[Unit] = projectLock.release()
     releaseResult.isSuccess shouldBe true
+    projectLock.isLocked shouldBe false
 
     verify(mockChannel, times(1)).tryLock()
     verify(mockFileLock, times(1)).release()
@@ -205,6 +206,25 @@ class ProjectLockSpec extends FlatSpec with MockitoSugar with BeforeAndAfter wit
 
     logErrorArgs should not be empty
     logErrorArgs.filter(_.isFailure) shouldBe empty
+  }
+
+  it should "be capable of re-locking" in new Fixture {
+    when(mockChannel.tryLock()).thenReturn(mockFileLock)
+    val result: Try[Unit] = projectLock.lock()
+    result.isSuccess shouldBe true
+    val releaseResult: Try[Unit] = projectLock.release()
+    releaseResult.isSuccess shouldBe true
+    projectLock.isLocked shouldBe false
+
+    // Re-lock
+    projectLock.lock() shouldBe Success(())
+    projectLock.release()
+
+    verify(mockChannel, times(2)).tryLock()
+    verify(mockFileLock, times(2)).release()
+    verify(mockFileLock, times(2)).close()
+    verify(mockChannel, times(2)).close()
+    verify(mockFile, times(2)).delete()
   }
 
   it should "cleanup all other resources, return failure, and not log when exception is thrown during file lock release when lock owner releases lock" in new Fixture {
@@ -218,6 +238,7 @@ class ProjectLockSpec extends FlatSpec with MockitoSugar with BeforeAndAfter wit
       case Failure(_: IOException) => // ok
       case _ => fail("Release should be a failure")
     }
+    projectLock.isLocked shouldBe true
     verify(mockFileLock, times(1)).release()
     verify(mockChannel, times(1)).close()
     verify(mockFile, times(1)).delete()
@@ -234,6 +255,7 @@ class ProjectLockSpec extends FlatSpec with MockitoSugar with BeforeAndAfter wit
     result.isSuccess shouldBe true
     val releaseResult: Try[Unit] = projectLock.release()
     releaseResult.isSuccess shouldBe true
+    projectLock.isLocked shouldBe false
 
     verify(mockFileLock, times(1)).close()
     verify(mockChannel, times(1)).close()
@@ -256,6 +278,7 @@ class ProjectLockSpec extends FlatSpec with MockitoSugar with BeforeAndAfter wit
     result.isSuccess shouldBe true
     val releaseResult: Try[Unit] = projectLock.release()
     releaseResult.isSuccess shouldBe true
+    projectLock.isLocked shouldBe false
 
     verify(mockFileLock, times(1)).close()
     verify(mockFileLock, times(1)).close()

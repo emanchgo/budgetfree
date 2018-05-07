@@ -24,18 +24,23 @@
 package trove.core.infrastructure.project
 
 import java.io.File
+import java.util.Properties
 
 import grizzled.slf4j.Logging
+import javax.sql.DataSource
+import slick.dbio.{DBIOAction, NoStream}
 import slick.jdbc.SQLiteProfile.backend._
 import slick.jdbc.{DriverDataSource, SQLiteProfile}
-import slick.util.ClassLoaderUtil
+import slick.util.{AsyncExecutor, ClassLoaderUtil}
 import trove.constants.ProjectsHomeDir
+import trove.core.infrastructure.persist.Tables.DBVersion
 import trove.core.infrastructure.persist._
 import trove.exceptional.PersistenceError
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration._
 import scala.concurrent.{Await, Future}
+import scala.reflect.runtime.universe._
 import scala.util.control.NonFatal
 import scala.util.{Failure, Success, Try}
 
@@ -63,7 +68,8 @@ private[project] sealed trait ShutdownHook extends Logging { self : ProjectServi
   Runtime.getRuntime.addShutdownHook(shutdownHook)
 }
 
-private[core] class Project(val name: String, lock: ProjectLock, db: DatabaseDef) extends LockReleasing with Logging {
+private[core] class Project(val name: String, private[project] val lock: ProjectLock, private[project] val db: DatabaseDef)
+  extends LockReleasing with Logging {
 
   def close(): Unit = {
     db.close()
@@ -75,65 +81,120 @@ private[core] class Project(val name: String, lock: ProjectLock, db: DatabaseDef
 }
 
 private[core] trait ProjectService {
-  val JdbcPrefix = "jdbc:sqlite:"
-  val DbFilenameSuffix: String = ".sqlite3"
-
-  def listProjects(): Try[Seq[String]]
+  def projectsHomeDir: File
+  def listProjects: Try[Seq[String]]
   def open(projectName: String): Try[Project]
   def closeCurrentProject(): Try[Unit]
 }
 
 private[core] object ProjectService {
 
-  private[this] lazy val instance = new ProjectServiceImpl(ProjectsHomeDir) with ShutdownHook
+  val JdbcPrefix = "jdbc:sqlite:"
+  val DbFilenameSuffix: String = ".sqlite3"
+
+  private[this] lazy val instance = new ProjectServiceImpl(ProjectsHomeDir) with LivePersistence with ShutdownHook
 
   def apply(): ProjectService = instance
 }
 
-private[core] class ProjectServiceImpl(projectsHomeDir: File) extends ProjectService with LockReleasing with Logging {
+private[project] case class DatabaseConfig(
+  url: String,
+  user: String = null,
+  password: String = null,
+  properties: Properties = null,
+  driverClassName: String = "org.sqlite.JDBC",
+  classLoader: ClassLoader = ClassLoaderUtil.defaultClassLoader,
+  numThreads: Int = 1,
+  minThreads: Int = 1,
+  maxThreads: Int = 1,
+  queueSize: Int = 1,
+  maxConnections: Int = 1,
+  keepAliveTime: Duration = 1.minute,
+  registerMbeans: Boolean = false,
+  keepAliveConnection: Boolean = false
+)
 
-  import slick.jdbc.SQLiteProfile.api._
+private[project] trait PersistenceOps {
+
+  def newProjectLock(projectsHomeDir: File, projectName: String): ProjectLock
+  def createDbFile(directory: File, filename: String): File
+  def forDataSource(ds: DataSource, maxConnections: Option[Int], executor: AsyncExecutor, keepAliveConnection: Boolean): DatabaseDef
+
+  def runDbIOAction[R: TypeTag](a: DBIOAction[R,NoStream,Nothing])(db: DatabaseDef) : Future[R]
+}
+
+private[project] trait LivePersistence extends PersistenceOps {
+
+  override def newProjectLock(projectsHomeDir: File, projectName: String): ProjectLock = ProjectLock(projectsHomeDir, projectName)
+
+  override def createDbFile(directory: File, filename: String): File = new File(directory, filename)
+
+  override def forDataSource(ds: DataSource, maxConnections: Option[Int], executor: AsyncExecutor, keepAliveConnection: Boolean): DatabaseDef = {
+
+    import SQLiteProfile.backend._
+
+    Database.forDataSource(
+      ds = ds,
+      maxConnections = maxConnections,
+      executor = executor,
+      keepAliveConnection = false
+    )
+  }
+
+  override def runDbIOAction[R: TypeTag](a: DBIOAction[R,NoStream,Nothing])(db: DatabaseDef): Future[R] = db.run(a)
+
+}
+
+private[core] abstract class ProjectServiceImpl(val projectsHomeDir: File) extends ProjectService with PersistenceOps with LockReleasing
+  with Logging {
+
+  require(projectsHomeDir.isDirectory)
+
+  import ProjectService._
   import slick.jdbc.SQLiteProfile.backend._
 
   // The current active project
   @volatile private[this] var currentProject: Option[Project] = None
 
-  override def listProjects(): Try[Seq[String]] = Try {
-    projectsHomeDir.listFiles.filter(_.isFile).map(_.getName).filterNot(_.endsWith(ProjectLock.lockfileSuffix)).filterNot(_.startsWith("."))
-      .map(_.stripSuffix(DbFilenameSuffix)).toSeq.sorted
+  override def listProjects: Try[Seq[String]] = Try {
+    projectsHomeDir.listFiles.filter(_.isFile).map(_.getName).filterNot(_.endsWith(ProjectLock.LockfileSuffix)).filterNot(_.startsWith("."))
+      .map(_.stripSuffix(DbFilenameSuffix)).sorted
   }
 
   override def open(projectName: String): Try[Project] = currentProject.fold[Try[Project]] {
     logger.debug(s"Opening project: $projectName")
 
-    val projectLock: ProjectLock = ProjectLock(projectsHomeDir, projectName)
+    val projectLock: ProjectLock = newProjectLock(projectsHomeDir, projectName)
     val lockResult = projectLock.lock()
 
-    val openResult: Try[(DatabaseDef, Boolean)] = lockResult.map { _ =>
-      val dbFileName = s"$projectName$DbFilenameSuffix"
-      val dbFile = new File(projectsHomeDir, dbFileName)
-      val create: Boolean = !dbFile.exists()
-      val dbURL = s"$JdbcPrefix${dbFile.getAbsolutePath}"
-      val db: DatabaseDef = openDatabase(dbURL)
-      (db, create)
+    val dbFileName = s"$projectName$DbFilenameSuffix"
+    val dbFile = createDbFile(projectsHomeDir, dbFileName)
+    val dbURL = s"$JdbcPrefix${dbFile.getAbsolutePath}"
+    val create: Boolean = !dbFile.exists()
+
+    val openResult: Try[DatabaseDef] = lockResult.map { _ =>
+      openDatabase(DatabaseConfig(dbURL))
     }
 
     val projectResult: Try[Project] = openResult.flatMap {
-      case (db, create) =>
+      db =>
+
+        import slick.jdbc.SQLiteProfile.api._
+
         val setupResult: Future[Unit] = if (create) {
-          db.run(Tables.setupAction)
+          runDbIOAction(Tables.setupAction)(db)
         }
         else {
           Future.successful(())
         }
 
         val versionCheckResult: Future[Try[Project]] = setupResult.flatMap { _ =>
-          db.run(Tables.version.result).map {
-            case rows if rows.length == 1 && rows.head == Tables.CurrentDbVersion =>
+          runDbIOAction(Tables.version.result)(db).map {
+            case rows: Seq[DBVersion] if rows.length == 1 && rows.head == Tables.CurrentDbVersion =>
               val prj = new Project(projectName, projectLock, db)
               Success(prj)
-            case rows if rows.length == 1 => PersistenceError(s"Invalid database version: ${rows.head.id}")
-            case rows => PersistenceError(s"Incorrect number of rows in the VERSION table: found ${rows.size} rows")
+            case rows: Seq[DBVersion] if rows.length == 1 => PersistenceError(s"Invalid database version: ${rows.head.id}")
+            case rows: Seq[DBVersion] => PersistenceError(s"Incorrect number of rows in the VERSION table: found ${rows.size} rows")
           }
         }
 
@@ -153,27 +214,15 @@ private[core] class ProjectServiceImpl(projectsHomeDir: File) extends ProjectSer
 
   } (prj => PersistenceError(s"Unable to open project - ${prj.name} is currently open"))
 
+  private[this] def openDatabase(dbConfig: DatabaseConfig): DatabaseDef = {
 
-  override def closeCurrentProject(): Try[Unit] =
-    currentProject.fold[Try[Unit]](PersistenceError("No current project to close")) { project: Project =>
-      Try(project.close()).map { _ =>
-        currentProject = None
-      }.recoverWith {
-        case NonFatal(e) =>
-          logger.error("Error closing project")
-          Failure(e)
-      }
-  }
-
-
-  private[this] def openDatabase(dbURL: String): DatabaseDef = {
     val dds = new DriverDataSource(
-      url = dbURL,
-      user = null,
-      password = null,
-      properties = null,
-      driverClassName = "org.sqlite.JDBC",
-      classLoader = ClassLoaderUtil.defaultClassLoader)
+      url = dbConfig.url,
+      user = dbConfig.user,
+      password = dbConfig.password,
+      properties = dbConfig.properties,
+      driverClassName = dbConfig.driverClassName,
+      classLoader = dbConfig.classLoader)
 
     // N.B. We only need a single thread, so we pass 1 here.
     val numWorkers = 1
@@ -188,12 +237,18 @@ private[core] class ProjectServiceImpl(projectsHomeDir: File) extends ProjectSer
       registerMbeans = false
     )
 
-    import SQLiteProfile.backend._
-    Database.forDataSource(
-      ds = dds,
-      maxConnections = Some(numWorkers),
-      executor = executor,
-      keepAliveConnection = false
-    )
+    forDataSource(ds = dds, maxConnections =  Some(numWorkers), executor = executor, keepAliveConnection = false)
+  }
+
+
+  override def closeCurrentProject(): Try[Unit] =
+    currentProject.fold[Try[Unit]](Success({})) { project: Project =>
+      Try(project.close()).map { _ =>
+        currentProject = None
+      }.recoverWith {
+        case NonFatal(e) =>
+          logger.error("Error closing project")
+          Failure(e)
+      }
   }
 }
