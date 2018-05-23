@@ -141,7 +141,7 @@ class ProjectServiceSpec extends FlatSpec with Matchers with MockitoSugar {
     when(file.isDirectory).thenReturn(true)
     val ex = new RuntimeException("doom")
     when(file.listFiles).thenThrow(ex)
-    val projectService = new ProjectServiceImpl(file) with LivePersistence
+    val projectService = new ProjectServiceImpl(file) with MockPersistence
     projectService.listProjects match {
       case Failure(e) => e shouldBe ex
       case somethingElse => fail(s"Unexpected result: $somethingElse")
