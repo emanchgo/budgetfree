@@ -91,14 +91,14 @@ private[ui] class ActiveProjectScene(projectName: String) extends Scene {
   private[this] val tabPane = new TabPane {
     tabs = Seq(
       new Tab {
-        text = "HOME"
+        text = "Home"
         tooltip = "High level view"
         closable = false
         tabMaxHeight = ActiveProjectTabHeight
         graphic = new ImageView(getImage("pie-chart-40.png", ActiveProjectTabImageSize))
       },
       new Tab {
-        text = "TRACKING"
+        text = "Tracking"
         tooltip = "Track individual transactions"
         closable = false
         content = trackingPane
@@ -106,21 +106,21 @@ private[ui] class ActiveProjectScene(projectName: String) extends Scene {
         graphic = new ImageView(getImage("ledger-40.png", ActiveProjectTabImageSize))
       },
       new Tab {
-        text = "CASH FLOWS"
+        text = "Cash Flows"
         tooltip = "Create cash flow plans"
         closable = false
         tabMaxHeight = ActiveProjectTabHeight
         graphic = new ImageView(getImage("plumbing-40.png", ActiveProjectTabImageSize))
       },
       new Tab {
-        text = "REPORTS"
+        text = "Reports"
         tooltip = "Create and view customized reports"
         closable = false
         tabMaxHeight = ActiveProjectTabHeight
         graphic = new ImageView(getImage("report-card-40.png", ActiveProjectTabImageSize))
       },
       new Tab {
-        text = "TROVE"
+        text = "Your Trove"
         tooltip = "See where you stand on your savings goals"
         closable = false
         tabMaxHeight = ActiveProjectTabHeight
