@@ -122,7 +122,6 @@ class ProjectServiceSpec extends FlatSpec with Matchers with MockitoSugar {
 
   it should "strip the filename extension from valid project files" in new NormalProjectsFixture {
     val result: Try[Seq[String]] = projectService.listProjects
-    result.isInstanceOf[Failure[_]] should not be true
     result.isFailure shouldBe false
     val projectNames: Seq[String] = result.get
     projectNames should not be empty
@@ -131,7 +130,6 @@ class ProjectServiceSpec extends FlatSpec with Matchers with MockitoSugar {
 
   it should "return a sorted list of project names with filename extensions stripped" in new NormalProjectsFixture {
     val result: Try[Seq[String]] = projectService.listProjects
-    result.isInstanceOf[Failure[_]] should not be true
     result.isFailure shouldBe false
     result.get shouldBe Seq("abc", "def", "ghi")
   }
@@ -149,8 +147,9 @@ class ProjectServiceSpec extends FlatSpec with Matchers with MockitoSugar {
     }
   }
 
-  "openProject" should "create a project lock" in new NormalProjectsFixture {
+  "open" should "open an existing project and lock it" in new NormalProjectsFixture {
     val projectNames: Try[Seq[String]] = projectService.listProjects
+    projectNames.isSuccess shouldBe true
     val projectName: String = projectNames.get.head
     projectService.open(projectName) match {
       case Success(project) =>
@@ -165,24 +164,26 @@ class ProjectServiceSpec extends FlatSpec with Matchers with MockitoSugar {
 Persistence service
 ===================
 
-"openProject" should "create a project lock"
-it should "return failure if another project is already open"
-it should "return failure if unable to obtain project lock"
-it should "return failure and clean up project lock if unable to open database"
-it should "create all tables if creating a new database"
-it should "not attempt to create tables if opening existing database"
-it should "populate the version table if creating a new database"
-it should "create a project if all setup actions succeed"
+it should "open an existing project without creating database or tables"
+it should "create a new project with initial tables and lock the project"
+it should "populate the version number table when creating a new project"
+it should "open the database with all the right settings"
+it should "set the current project upon successful project opening"
+
+it should "fail with a SystemError if unable to obtain project lock"
+it should "fail with a PersistenceError and not lock a project if another project is already open"
+it should "fail with a PersistenceError and clean up project lock if unable to open database"
 it should "fail with a PersistenceError if the wrong database version exists and clean up the project lock"
 it should "fail with a PersistenceError if there are too many rows in the database version table and clean up the project lock"
-it should "set the current project upon successful project opening"
-it should "open the database with all the right settings"
 
 "closeCurrentProject" should "clear the current project upon successful project closing"
-it should "close the database, release the project lock, and remove the shutdown hook upon successful project closing"
-it should "return a PersistenceError if the database cannot be closed"
-it should "return a PersistenceError if it cannot release the project lock"
-it should "return a PersistenceError if it cannot remove the shutdown hook"
+it should "return success if there is no open project"
+it should "close the database upon successful project closing"
+it should "release the project lock upon successful project closing"
+it should "remove the shutdown hook upon successful project closing"
+it should "fail with a PersistenceError if the database cannot be closed"
+it should "fail with a PersistenceError if it cannot release the project lock"
+it should "fail with a PersistenceError if it cannot remove the shutdown hook"
 
 "shutdown hook" should "close the database and release the project lock if invoked"
 it should "not try to remove itself from the jvm shutdown hooks"

@@ -27,10 +27,8 @@ import java.io.File
 import java.util.Properties
 
 import grizzled.slf4j.Logging
-import javax.sql.DataSource
-import slick.dbio.{DBIOAction, NoStream}
+import slick.jdbc.DriverDataSource
 import slick.jdbc.SQLiteProfile.backend._
-import slick.jdbc.{DriverDataSource, SQLiteProfile}
 import slick.util.{AsyncExecutor, ClassLoaderUtil}
 import trove.constants.ProjectsHomeDir
 import trove.core.infrastructure.persist.Tables.DBVersion
@@ -40,20 +38,10 @@ import trove.exceptional.PersistenceError
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration._
 import scala.concurrent.{Await, Future}
-import scala.reflect.runtime.universe._
 import scala.util.control.NonFatal
 import scala.util.{Failure, Success, Try}
 
-private[project] sealed trait LockReleasing extends Logging {
-  final def releaseLock(lock: ProjectLock): Unit =
-    lock.release() match {
-      case Success(_) =>
-      case Failure(NonFatal(e)) => logger.error("Error releasing project lock", e)
-      case Failure(e) => throw e
-    }
-}
-
-private[project] sealed trait ShutdownHook extends Logging { self : ProjectService =>
+private[project] trait ShutdownHook extends Logging { self : ProjectService =>
 
   private[project] val shutdownHook = new Thread() {
     override def run(): Unit = {
@@ -114,37 +102,6 @@ private[project] case class DatabaseConfig(
   keepAliveConnection: Boolean = false
 )
 
-private[project] trait PersistenceOps {
-
-  def newProjectLock(projectsHomeDir: File, projectName: String): ProjectLock
-  def createDbFile(directory: File, filename: String): File
-  def forDataSource(ds: DataSource, maxConnections: Option[Int], executor: AsyncExecutor, keepAliveConnection: Boolean): DatabaseDef
-
-  def runDbIOAction[R: TypeTag](a: DBIOAction[R,NoStream,Nothing])(db: DatabaseDef) : Future[R]
-}
-
-private[project] trait LivePersistence extends PersistenceOps {
-
-  override def newProjectLock(projectsHomeDir: File, projectName: String): ProjectLock = ProjectLock(projectsHomeDir, projectName)
-
-  override def createDbFile(directory: File, filename: String): File = new File(directory, filename)
-
-  override def forDataSource(ds: DataSource, maxConnections: Option[Int], executor: AsyncExecutor, keepAliveConnection: Boolean): DatabaseDef = {
-
-    import SQLiteProfile.backend._
-
-    Database.forDataSource(
-      ds = ds,
-      maxConnections = maxConnections,
-      executor = executor,
-      keepAliveConnection = false
-    )
-  }
-
-  override def runDbIOAction[R: TypeTag](a: DBIOAction[R,NoStream,Nothing])(db: DatabaseDef): Future[R] = db.run(a)
-
-}
-
 private[core] abstract class ProjectServiceImpl(val projectsHomeDir: File) extends ProjectService with PersistenceOps with LockReleasing
   with Logging {
 
@@ -172,7 +129,7 @@ private[core] abstract class ProjectServiceImpl(val projectsHomeDir: File) exten
     val dbURL = s"$JdbcPrefix${dbFile.getAbsolutePath}"
     val create: Boolean = !dbFile.exists()
 
-    val openResult: Try[DatabaseDef] = lockResult.map { _ =>
+    val openResult: Try[DatabaseDef] = lockResult.flatMap { _ =>
       openDatabase(DatabaseConfig(dbURL))
     }
 
@@ -214,7 +171,7 @@ private[core] abstract class ProjectServiceImpl(val projectsHomeDir: File) exten
 
   } (prj => PersistenceError(s"Unable to open project - ${prj.name} is currently open"))
 
-  private[this] def openDatabase(dbConfig: DatabaseConfig): DatabaseDef = {
+  private[this] def openDatabase(dbConfig: DatabaseConfig): Try[DatabaseDef] = Try {
 
     val dds = new DriverDataSource(
       url = dbConfig.url,
@@ -238,6 +195,8 @@ private[core] abstract class ProjectServiceImpl(val projectsHomeDir: File) exten
     )
 
     forDataSource(ds = dds, maxConnections =  Some(numWorkers), executor = executor, keepAliveConnection = false)
+  }.recoverWith {
+    case NonFatal(e) => PersistenceError("Unable to open database", e)
   }
 
 
@@ -248,7 +207,7 @@ private[core] abstract class ProjectServiceImpl(val projectsHomeDir: File) exten
       }.recoverWith {
         case NonFatal(e) =>
           logger.error("Error closing project")
-          Failure(e)
+          PersistenceError("Unable to close project", e)
       }
   }
 }
