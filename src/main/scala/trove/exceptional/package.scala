@@ -23,7 +23,8 @@
 
 package trove
 
-import scala.util.Failure
+import scala.util.{Failure, Try}
+import scala.util.control.NonFatal
 
 package object exceptional {
 
@@ -71,6 +72,11 @@ package object exceptional {
   object PersistenceError {
     def apply(message: String, t: Throwable) = Failure(PersistenceException(message, Some(t)))
     def apply(message: String) = Failure(PersistenceException(message))
+    //ejf-fixMe: add these, like, everywhere
+    def unapply(tr: Try[_]): Option[PersistenceException] = tr match {
+      case Failure(e: PersistenceException) => Some(e)
+      case _ => None
+    }
   }
 
   val FailQuietly = Failure(new scala.Exception())

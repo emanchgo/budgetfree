@@ -33,6 +33,7 @@ scalaVersion := "2.12.4"
 scalacOptions ++= Seq("-deprecation", "-feature")
 
 coverageEnabled := true
+coverageExcludedPackages := "trove\\.models\\..*;trove\\.event\\..*;trove\\.ui\\..*"
 
 // Versions
 val akkaVersion          = "2.5.11"
