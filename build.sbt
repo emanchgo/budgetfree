@@ -28,7 +28,7 @@ name := "trove"
 
 version := "0.1.0-SNAPSHOT"
 
-scalaVersion := "2.12.4"
+scalaVersion := "2.12.7"
 
 scalacOptions ++= Seq("-deprecation", "-feature")
 
@@ -36,20 +36,35 @@ coverageEnabled := true
 coverageExcludedPackages := "trove\\.models\\..*;trove\\.event\\..*;trove\\.ui\\..*"
 
 // Versions
-val akkaVersion          = "2.5.11"
+val akkaVersion          = "2.5.17"
 val grizzledSlf4jVersion = "1.3.2"
-val scalaFxVersion       = "8.0.144-R12"
+val scalaFxVersion       = "11-R16"
+val javaFxVersion        = "11"
 val slf4jVersion         = "1.7.25"
-val slickVersion         = "3.2.2"
-val sqliteJdbcVersion    = "3.21.0.1"
+val slickVersion         = "3.2.3"
+val sqliteJdbcVersion    = "3.25.2"
 
-val mockitoVersion       = "2.13.0"
+val mockitoVersion       = "2.23.0"
 val scalacticVersion     = "3.0.5"
 val scalatestVersion     = "3.0.5"
 
 // UI
 libraryDependencies ++= Seq(
+  "org.openjfx" % "javafx" % javaFxVersion,
   "org.scalafx" %% "scalafx" % scalaFxVersion
+)
+
+// Determine OS version of JavaFX binaries
+lazy val osName = System.getProperty("os.name") match {
+  case n if n.startsWith("Linux")   => "linux"
+  case n if n.startsWith("Mac")     => "mac"
+  case n if n.startsWith("Windows") => "win"
+  case _ => throw new Exception("Unknown platform!")
+}
+
+lazy val javaFXModules = Seq("base", "controls", "fxml", "graphics", "media", "swing", "web")
+libraryDependencies ++= javaFXModules.map( m =>
+  "org.openjfx" % s"javafx-$m" % "11" classifier osName
 )
 
 // Logging
