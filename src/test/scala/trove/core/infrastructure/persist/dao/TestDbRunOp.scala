@@ -21,11 +21,11 @@
  *  along with Trove.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package trove.core.infrastructure.persist
+package trove.core.infrastructure.persist.dao
 
 import slick.dbio.{DBIOAction, NoStream}
+import scala.reflect.runtime.universe._
 
-import scala.reflect.runtime.universe.TypeTag
 import scala.util.Try
 
 trait TestDbRunOp[+S] extends DbRunOp[S] {

@@ -21,14 +21,14 @@
  *  along with Trove.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package trove.core.infrastructure.project
+package trove.core.infrastructure.persist.projectlock
 
 import grizzled.slf4j.Logging
 
-import scala.util.{Failure, Success}
 import scala.util.control.NonFatal
+import scala.util.{Failure, Success}
 
-private[project] trait LockReleasing extends Logging {
+private[persist] trait LockReleasing extends Logging {
   final def releaseLock(lock: ProjectLock): Unit =
     lock.release() match {
       case Success(_) =>

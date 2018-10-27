@@ -23,29 +23,4 @@
 
 package trove.core.infrastructure.persist
 
-import slick.dbio.{DBIOAction, NoStream}
-import slick.jdbc.SQLiteProfile.backend._
-import trove.exceptional.PersistenceError
-
-import scala.concurrent.Await
-import scala.concurrent.duration.Duration
-import scala.reflect.runtime.universe.TypeTag
-import scala.util.Try
-import scala.util.control.NonFatal
-
-trait DbRunOp[+S] {
-  def run[R >: Seq[S] : TypeTag](act: DBIOAction[R, NoStream, Nothing]): Try[R]
-}
-
-trait DbExec[+S] { self: DbRunOp[S] =>
-  // Call this method
-  def exec[R >: Seq[S] : TypeTag](action: DBIOAction[R, NoStream, Nothing]): Try[R] =
-    self.run(action).recoverWith {
-      case NonFatal(e) => PersistenceError("Database execution error", e)
-    }
-}
-
-trait LiveDbRunOp[+S] extends DbRunOp[S] {
-  protected def db: DatabaseDef
-  override def run[R >: Seq[S] : TypeTag](action: DBIOAction[R, NoStream, Nothing]): Try[R] = Try(Await.result(db.run(action), Duration.Inf))
-}
+private[persist] case class DBVersion(id: Long)

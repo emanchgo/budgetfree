@@ -21,10 +21,12 @@
  *  along with Trove.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package trove.core.infrastructure.persist
+package trove.core.infrastructure.persist.dao
 
 import org.scalatest.{FlatSpec, Matchers}
-import trove.core.infrastructure.persist.Tables._
+import trove.core.infrastructure.persist.schema.Tables
+import trove.core.infrastructure.persist.schema.Tables._
+import trove.core.infrastructure.persist.DBVersion
 import trove.exceptional.PersistenceError
 
 import scala.util.{Failure, Success, Try}

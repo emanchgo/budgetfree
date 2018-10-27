@@ -21,7 +21,7 @@
  *  along with Trove.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package trove.core.infrastructure.project
+package trove.core.infrastructure.persist
 
 import java.io.File
 import java.util.Properties
@@ -31,8 +31,8 @@ import slick.jdbc.DriverDataSource
 import slick.jdbc.SQLiteProfile.backend._
 import slick.util.{AsyncExecutor, ClassLoaderUtil}
 import trove.constants.ProjectsHomeDir
-import trove.core.infrastructure.persist.Tables.DBVersion
-import trove.core.infrastructure.persist._
+import trove.core.infrastructure.persist.projectlock.{LockReleasing, ProjectLock}
+import trove.core.infrastructure.persist.schema.Tables
 import trove.exceptional.PersistenceError
 
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -41,14 +41,14 @@ import scala.concurrent.{Await, Future}
 import scala.util.control.NonFatal
 import scala.util.{Failure, Success, Try}
 
-private[project] trait ShutdownHook extends Logging { self : ProjectService =>
+private[persist] trait ShutdownHook extends Logging { self : ProjectPersistenceService =>
 
-  private[project] val shutdownHook = new Thread() {
+  private[persist] val shutdownHook = new Thread() {
     override def run(): Unit = {
       logger.warn(s"Shutdown hook executing")
       closeCurrentProject() match {
         case Success(_) =>
-        case Failure(NonFatal(e)) => logger.error("Shutdown hook was unable to execute for persistence service", e)
+        case Failure(NonFatal(e)) => logger.error("Shutdown hook was unable to execute for project service", e)
         case Failure(e) => throw e
       }
     }
@@ -56,7 +56,7 @@ private[project] trait ShutdownHook extends Logging { self : ProjectService =>
   Runtime.getRuntime.addShutdownHook(shutdownHook)
 }
 
-private[core] class Project(val name: String, private[project] val lock: ProjectLock, private[project] val db: DatabaseDef)
+private[persist] class Project(val name: String, private[persist] val lock: ProjectLock, private[persist] val db: DatabaseDef)
   extends LockReleasing with Logging {
 
   def close(): Unit = {
@@ -68,24 +68,24 @@ private[core] class Project(val name: String, private[project] val lock: Project
   }
 }
 
-private[core] trait ProjectService {
+private[core] trait ProjectPersistenceService {
   def projectsHomeDir: File
   def listProjects: Try[Seq[String]]
   def open(projectName: String): Try[Project]
   def closeCurrentProject(): Try[Unit]
 }
 
-private[core] object ProjectService {
+private[core] object ProjectPersistenceService {
 
   val JdbcPrefix = "jdbc:sqlite:"
   val DbFilenameSuffix: String = ".sqlite3"
 
-  private[this] lazy val instance = new ProjectServiceImpl(ProjectsHomeDir) with LivePersistence with ShutdownHook
+  private[this] lazy val instance = new ProjectPersistenceServiceImpl(ProjectsHomeDir) with LivePersistence with ShutdownHook
 
-  def apply(): ProjectService = instance
+  def apply(): ProjectPersistenceService = instance
 }
 
-private[project] case class DatabaseConfig(
+private[persist] case class DatabaseConfig(
   url: String,
   user: String = null,
   password: String = null,
@@ -102,12 +102,12 @@ private[project] case class DatabaseConfig(
   keepAliveConnection: Boolean = false
 )
 
-private[core] abstract class ProjectServiceImpl(val projectsHomeDir: File) extends ProjectService with PersistenceOps with LockReleasing
+private[persist] abstract class ProjectPersistenceServiceImpl(val projectsHomeDir: File) extends ProjectPersistenceService with PersistenceOps with LockReleasing
   with Logging {
 
   require(projectsHomeDir.isDirectory)
 
-  import ProjectService._
+  import ProjectPersistenceService._
   import slick.jdbc.SQLiteProfile.backend._
 
   // The current active project
@@ -170,6 +170,7 @@ private[core] abstract class ProjectServiceImpl(val projectsHomeDir: File) exten
     projectResult
 
   } (prj => PersistenceError(s"Unable to open project - ${prj.name} is currently open"))
+
 
   private[this] def openDatabase(dbConfig: DatabaseConfig): Try[DatabaseDef] = Try {
 

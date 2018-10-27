@@ -21,7 +21,8 @@
  *  along with Trove.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package trove.core.infrastructure.project
+package trove.core.infrastructure.persist
+
 import java.io.File
 
 import javax.sql.DataSource
@@ -31,20 +32,21 @@ import org.scalatest.{FlatSpec, Matchers}
 import slick.dbio.{DBIOAction, NoStream}
 import slick.util.AsyncExecutor
 import trove.constants.ProjectsHomeDir
-import trove.core.infrastructure.persist.Tables
-import trove.core.infrastructure.project.ProjectService._
+import trove.core.infrastructure.persist.projectlock.ProjectLock
+import trove.core.infrastructure.persist.schema.Tables
 
 import scala.concurrent.Future
 import scala.reflect.runtime.universe._
 import scala.util.{Failure, Success, Try}
 
-class ProjectServiceSpec extends FlatSpec with Matchers with MockitoSugar {
+class ProjectPersistenceServiceSpec extends FlatSpec with Matchers with MockitoSugar {
+  import ProjectPersistenceService._
 
   trait ProjectDirFixture {
     val tempDir: File = mock[File]
     when(tempDir.isDirectory).thenReturn(true)
     when(tempDir.listFiles()).thenReturn(Array.empty[File])
-    val projectService: ProjectServiceImpl = new ProjectServiceImpl(tempDir) with MockPersistence
+    val projectService: ProjectPersistenceServiceImpl = new ProjectPersistenceServiceImpl(tempDir) with MockPersistence
 
     def mockFile(name: String, directory: Boolean = false): File = {
       require(name != null)
@@ -63,6 +65,7 @@ class ProjectServiceSpec extends FlatSpec with Matchers with MockitoSugar {
   }
 
   trait NormalProjectsFixture extends ProjectDirFixture {
+    import ProjectPersistenceService._
 
     val abc: File = mockFile(s"abc$DbFilenameSuffix")
     val `def`: File = mockFile(s"def$DbFilenameSuffix")
@@ -103,12 +106,12 @@ class ProjectServiceSpec extends FlatSpec with Matchers with MockitoSugar {
 
   }
 
-  "Trove project service" should "utilize project home dir" in {
-    ProjectService().asInstanceOf[ProjectServiceImpl].projectsHomeDir shouldBe ProjectsHomeDir
+  "Trove project persistence service" should "utilize project home dir" in {
+    ProjectPersistenceService().asInstanceOf[ProjectPersistenceServiceImpl].projectsHomeDir shouldBe ProjectsHomeDir
   }
 
   it should "add shutdown hook" in {
-    val shutdownHook = ProjectService().asInstanceOf[ShutdownHook].shutdownHook
+    val shutdownHook = ProjectPersistenceService().asInstanceOf[ShutdownHook].shutdownHook
     Runtime.getRuntime.removeShutdownHook(shutdownHook) shouldBe true
   }
 
@@ -139,7 +142,7 @@ class ProjectServiceSpec extends FlatSpec with Matchers with MockitoSugar {
     when(file.isDirectory).thenReturn(true)
     val ex = new RuntimeException("doom")
     when(file.listFiles).thenThrow(ex)
-    val projectService = new ProjectServiceImpl(file) with MockPersistence
+    val projectService = new ProjectPersistenceServiceImpl(file) with MockPersistence
     projectService.listProjects match {
       case Failure(e) => e shouldBe ex
       case somethingElse => fail(s"Unexpected result: $somethingElse")

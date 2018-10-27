@@ -21,11 +21,12 @@
  *  along with Trove.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package trove.core.infrastructure.persist
+package trove.core.infrastructure.persist.dao
 
 import slick.jdbc.SQLiteProfile.api._
 import slick.jdbc.SQLiteProfile.backend._
-import trove.core.infrastructure.persist.Tables.DBVersion
+import trove.core.infrastructure.persist.DBVersion
+import trove.core.infrastructure.persist.schema.Tables
 import trove.exceptional.PersistenceError
 
 import scala.util.{Success, Try}

@@ -21,7 +21,7 @@
  *  along with Trove.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package trove.core.infrastructure.project
+package trove.core.infrastructure.persist
 
 import java.io.File
 
@@ -29,11 +29,12 @@ import javax.sql.DataSource
 import slick.dbio.{DBIOAction, NoStream}
 import slick.jdbc.SQLiteProfile.backend._
 import slick.util.AsyncExecutor
+import trove.core.infrastructure.persist.projectlock.ProjectLock
 
 import scala.concurrent.Future
 import scala.reflect.runtime.universe._
 
-private[project] trait PersistenceOps {
+private[persist] trait PersistenceOps {
 
   def newProjectLock(projectsHomeDir: File, projectName: String): ProjectLock
   def createDbFile(directory: File, filename: String): File
@@ -42,7 +43,7 @@ private[project] trait PersistenceOps {
   def runDbIOAction[R: TypeTag](a: DBIOAction[R,NoStream,Nothing])(db: DatabaseDef) : Future[R]
 }
 
-private[project] trait LivePersistence extends PersistenceOps {
+private[persist] trait LivePersistence extends PersistenceOps {
 
   override def newProjectLock(projectsHomeDir: File, projectName: String): ProjectLock = ProjectLock(projectsHomeDir, projectName)
 
