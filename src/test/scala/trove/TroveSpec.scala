@@ -29,17 +29,17 @@ class TroveSpec {
 Trove
 =====
 "listProjectNames" should "call the persistence manager"
-"apply" should "accept a valid persist name"
-it should "reject an invalid persist name"
-it should "call the persistence manager to open the persist"
+"apply" should "accept a valid project name"
+it should "reject an invalid proejct name"
+it should "call the persistence manager to open the project"
 
 "openProject" should "publish a ProjectChanged event"
-it should "close the persist if a non-fatal error occurs"
+it should "close the project if a non-fatal error occurs"
 
-"closeCurrentProject" should "call the persistence manager to close the persist"
+"closeCurrentProject" should "call the persistence manager to close the project"
 it should "publish a ProjectChanged event"
 
-"shutdown" should "call the persistence manager to close the persist"
+"shutdown" should "call the persistence manager to close the project"
 it should "shutdown the event service"
 */
 }

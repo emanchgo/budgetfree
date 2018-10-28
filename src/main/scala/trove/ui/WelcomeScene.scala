@@ -68,18 +68,18 @@ private[ui] class WelcomeScene extends Scene(800, 600) with Logging {
     text = "_Open / Create Project..."
     tooltip = "Open an existing Trove Project"
     onAction = { _ =>
-      logger.debug("Open existing persist called")
+      logger.debug("Open existing project called")
       ProjectChooser().foreach { chooser =>
         val result: Option[String] = chooser.showAndWait().asInstanceOf[Option[String]]
         result.flatMap {
           case "" => new TextInputDialog() {
               title = "Trove"
               headerText = "Create new Trove Project"
-              contentText = "Enter the new persist name:"
+              contentText = "Enter the new project name:"
             }.showAndWait()
           case _ => result
-        }.fold(logger.debug("No persist selected!")) { projectName =>
-          logger.debug(s"Opening persist: $projectName")
+        }.fold(logger.debug("No project selected!")) { projectName =>
+          logger.debug(s"Opening project: $projectName")
           dialogOnError(Trove(projectName))
         }
       }

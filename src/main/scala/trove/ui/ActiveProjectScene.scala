@@ -161,7 +161,7 @@ private[ui] class ActiveProjectScene(projectName: String) extends Scene {
     val result = new AppModalAlert(AlertType.Confirmation) {
       headerText = "Close Project?"
       buttonTypes = Seq(Yes,No)
-      contentText = s"Are you sure you want to close persist '$projectName?'"
+      contentText = s"Are you sure you want to close project '$projectName?'"
     }.showAndWait()
 
     result.map(bt => if(bt == Yes) true else false).fold(false)(identity)

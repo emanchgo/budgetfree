@@ -41,7 +41,7 @@ object Trove extends Logging {
   val eventService: EventService = EventService(actorSystem)
   val projectService: ProjectService = ProjectPersistenceService()
 
-  // For persist name validation
+  // For project name validation
   private[this] val ValidProjectNameChars: String = "^[a-zA-Z0-9_\\-]*$"
 
   def startup(): Try[Unit] = Success(Unit)
@@ -51,19 +51,19 @@ object Trove extends Logging {
   def apply(projectName: String): Try[Trove] =
     if (projectName.matches(ValidProjectNameChars)) {
       projectService.open(projectName).map { _ =>
-        logger.debug(s"Database for persist $projectName successfully opened.")
+        logger.debug(s"Database for project $projectName successfully opened.")
         val result = new Trove(projectName)
         eventService.publish(ProjectChanged(Some(projectName)))
         result
       }.recoverWith {
         case NonFatal(e) =>
-          logger.error(s"Project with name $projectName could not be initialized. Closing persist (if it was open).")
+          logger.error(s"Project with name $projectName could not be initialized. Closing project (if it was open).")
           projectService.closeCurrentProject()
           Failure(e)
       }
     }
     else {
-      ValidationError(s"""Invalid persist name: "$projectName." Valid characters are US-ASCII alphanumeric characters, '_', and '-'.""")
+      ValidationError(s"""Invalid project name: "$projectName." Valid characters are US-ASCII alphanumeric characters, '_', and '-'.""")
     }
 
   def closeCurrentProject(): Try[Unit] = projectService.closeCurrentProject().map { _ =>

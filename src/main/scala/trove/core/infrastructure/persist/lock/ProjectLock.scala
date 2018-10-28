@@ -52,30 +52,21 @@ private[persist] object ProjectLock {
     def close(): Unit = channel.close()
   }
 
-  trait EnvironmentOps {
+  trait EnvironmentOps extends LockResourceReleaseErrorHandling {
     def newFile(directory: File, filename: String): File
     def newRandomAccessFile(file: File): RandomAccessFile
     def newChannel(raf: RandomAccessFile): LockableChannel
-    def logIfError(result: Try[Unit]): Unit
   }
 
   def apply(projectsHomeDir: File, projectName: String): ProjectLock = new ProjectLock(projectsHomeDir, projectName) with EnvironmentOps {
     override def newFile(directory: File, filename: String): File = new File(directory, filename)
     override def newRandomAccessFile(file: File): RandomAccessFile = new RandomAccessFile(file: File, "rw")
     override def newChannel(raf: RandomAccessFile): LockableChannel = new LockableChannel(raf)
-    override def logIfError(result: Try[Unit]): Unit = result match {
-      case Success(_) =>
-      // No-op
-      case Failure(NonFatal(e)) =>
-        logger.error("Error!", e)
-      case Failure(e) =>
-        throw e
-      // Fatal, throw it, bubble it up!
-    }
   }
 }
 
-private[persist] class ProjectLock(projectsHomeDir: File, projectName: String) extends Logging { self: EnvironmentOps =>
+private[persist] class ProjectLock(projectsHomeDir: File, projectName: String) extends LockResourceReleaseErrorHandling with Logging {
+  self: EnvironmentOps =>
 
   import ProjectLock._
 
@@ -102,11 +93,11 @@ private[persist] class ProjectLock(projectsHomeDir: File, projectName: String) e
     }
 
     Option(tryLockResult).fold[Try[Resources]] {
-      logger.warn(s"Failed to acquire persist lock for $projectName (${file.getAbsolutePath})")
-      SystemError(s"""Another instance of $ApplicationName currently has persist "$projectName" open.""")
+      logger.warn(s"Failed to acquire project lock for $projectName (${file.getAbsolutePath})")
+      SystemError(s"""Another instance of $ApplicationName currently has project "$projectName" open.""")
     } {
       lock =>
-        logger.debug(s"Acquired single application instance lock for persist $projectName.")
+        logger.debug(s"Acquired single application instance lock for project $projectName.")
         val res = Resources(channel, lock)
         resources = Some(res)
       Success(res)
@@ -116,7 +107,7 @@ private[persist] class ProjectLock(projectsHomeDir: File, projectName: String) e
     case e: SystemException =>
       Failure(e)
     case NonFatal(e) =>
-      SystemError("Error acquiring persist lock", e)
+      SystemError("Error acquiring project lock", e)
   }.recoverWith {
     case e =>
       release()
@@ -125,25 +116,26 @@ private[persist] class ProjectLock(projectsHomeDir: File, projectName: String) e
 
   def isLocked: Boolean = resources.nonEmpty
 
-  def release(): Try[Unit] =
-    resources.fold[Try[Unit]](SystemError(
-      s"""$ApplicationName is not currently locked by the virtual machine.""")) { res =>
+  def release(): Unit =
+    resources.map{ res =>
 
-      val result = close(res.channel, Some(res.lock), Some(file))
-      result.foreach(_ =>
-        resources = None)
-      result
+      val closeResult = close(res.channel, Some(res.lock), Some(file))
+      handleLockResourceReleaseError(closeResult)
+      closeResult.map { _ =>
+        resources = None
+      }
   }
 
-  private[this] def close(channel: LockableChannel, lock: Option[FileLock] = None, file: Option[File] = None): Try[Unit] = {
+  private[this] def close(channel: LockableChannel, lock: Option[FileLock] = None, file: Option[File] = None):
+    Try[Unit] = {
 
     val result = lock.fold[Try[Unit]](Success(())) { lck: FileLock =>
       Try(lck.release())
     }
 
-    logIfError(Try(channel.close()))
+    handleLockResourceReleaseError(Try(channel.close()))
     file.foreach(f =>
-      logIfError(Try(f.delete())))
+      handleLockResourceReleaseError(Try(f.delete())))
 
     result
   }

@@ -26,14 +26,17 @@ package trove.core.infrastructure.persist.lock
 import grizzled.slf4j.Logging
 
 import scala.util.control.NonFatal
-import scala.util.{Failure, Success}
+import scala.util.{Failure, Success, Try}
 
-private[persist] trait LockReleasing extends Logging {
-  final def releaseLock(lock: ProjectLock): Unit =
-    lock.release() match {
+// This is for handling lock operation errors - the JVM may give us a fatal error
+// and the expectation is that we throw it. For lock ops, we want to do a "best-effort" resource release
+// operation, and preserve the behavior that arises if the underlying system error is fatal.
+private[persist] trait LockResourceReleaseErrorHandling extends Logging {
+  def handleLockResourceReleaseError(result: Try[Unit]): Unit =
+    result match {
       case Success(_) =>
       case Failure(NonFatal(e)) =>
-        logger.error("Error releasing persist lock", e)
+        logger.error("Error!", e)
       case Failure(e) =>
         throw e
     }

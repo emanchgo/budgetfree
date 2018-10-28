@@ -70,7 +70,7 @@ class ProjectLockSpec extends FlatSpec with MockitoSugar with BeforeAndAfterEach
 
     val mockFileLock: FileLock = mock[FileLock]
 
-    var logErrorArgs: List[Try[Unit]] = List.empty
+    var handleErrorArgs: List[Try[Unit]] = List.empty
 
     val throwExceptionOnCreateRandomAccessFile = false
 
@@ -94,7 +94,7 @@ class ProjectLockSpec extends FlatSpec with MockitoSugar with BeforeAndAfterEach
         mockChannel
       }
 
-      override def logIfError(result: Try[Unit]): Unit = logErrorArgs = result +: logErrorArgs
+      override def handleLockResourceReleaseError(result: Try[Unit]): Unit = handleErrorArgs = result +: handleErrorArgs
     }
   }
 
@@ -114,7 +114,7 @@ class ProjectLockSpec extends FlatSpec with MockitoSugar with BeforeAndAfterEach
     verify(mockChannel, never()).close()
     verify(mockFile, never()).delete()
 
-    logErrorArgs shouldBe empty
+    handleErrorArgs shouldBe empty
 }
 
   it should "return SystemError and not allocate resources if it cannot acquire lock (tryLock returns null)" in new Fixture {
@@ -136,8 +136,8 @@ class ProjectLockSpec extends FlatSpec with MockitoSugar with BeforeAndAfterEach
     verify(mockChannel, times(1)).close()
     verify(mockFile, never()).delete()
 
-    logErrorArgs should not be empty
-    val failures: List[Try[Unit]] = logErrorArgs.filter(_.isFailure)
+    handleErrorArgs should not be empty
+    val failures: List[Try[Unit]] = handleErrorArgs.filter(_.isFailure)
     failures shouldBe empty
   }
 
@@ -161,7 +161,7 @@ class ProjectLockSpec extends FlatSpec with MockitoSugar with BeforeAndAfterEach
     verify(mockChannel, never()).close()
     verify(mockFile, never()).delete()
 
-    logErrorArgs shouldBe empty
+    handleErrorArgs shouldBe empty
   }
 
   it should "return SystemError, close the channel, and not allocate resources if an exception is thrown while it is trying to acquire lock" in new Fixture {
@@ -185,8 +185,8 @@ class ProjectLockSpec extends FlatSpec with MockitoSugar with BeforeAndAfterEach
     verify(mockChannel, times(1)).close()
     verify(mockFile, never()).delete()
 
-    logErrorArgs should not be empty
-    logErrorArgs.filter(_.isFailure) shouldBe empty
+    handleErrorArgs should not be empty
+    handleErrorArgs.filter(_.isFailure) shouldBe empty
   }
 
 
@@ -194,8 +194,7 @@ class ProjectLockSpec extends FlatSpec with MockitoSugar with BeforeAndAfterEach
     when(mockChannel.tryLock()).thenReturn(mockFileLock)
     val result: Try[Unit] = projectLock.lock()
     result.isSuccess shouldBe true
-    val releaseResult: Try[Unit] = projectLock.release()
-    releaseResult.isSuccess shouldBe true
+    projectLock.release()
     projectLock.isLocked shouldBe false
 
     verify(mockChannel, times(1)).tryLock()
@@ -204,16 +203,15 @@ class ProjectLockSpec extends FlatSpec with MockitoSugar with BeforeAndAfterEach
     verify(mockChannel, times(1)).close()
     verify(mockFile, times(1)).delete()
 
-    logErrorArgs should not be empty
-    logErrorArgs.filter(_.isFailure) shouldBe empty
+    handleErrorArgs should not be empty
+    handleErrorArgs.filter(_.isFailure) shouldBe empty
   }
 
   it should "be capable of re-locking" in new Fixture {
     when(mockChannel.tryLock()).thenReturn(mockFileLock)
     val result: Try[Unit] = projectLock.lock()
     result.isSuccess shouldBe true
-    val releaseResult: Try[Unit] = projectLock.release()
-    releaseResult.isSuccess shouldBe true
+    projectLock.release()
     projectLock.isLocked shouldBe false
 
     // Re-lock
@@ -227,57 +225,57 @@ class ProjectLockSpec extends FlatSpec with MockitoSugar with BeforeAndAfterEach
     verify(mockFile, times(2)).delete()
   }
 
-  it should "cleanup all other resources, return failure, and not log when exception is thrown during file lock release when lock owner releases lock" in new Fixture {
+  it should "cleanup all other resources when exception is thrown during file lock release when lock owner releases lock" in new Fixture {
     when(mockChannel.tryLock()).thenReturn(mockFileLock)
     doThrow(new IOException("doom")).when(mockFileLock).release()
 
     val result: Try[Unit] = projectLock.lock()
     result.isSuccess shouldBe true
-    val releaseResult: Try[Unit] = projectLock.release()
-    releaseResult match {
-      case Failure(_: IOException) => // ok
-      case _ => fail("Release should be a failure")
-    }
+    projectLock.release()
     projectLock.isLocked shouldBe true
     verify(mockFileLock, times(1)).release()
     verify(mockChannel, times(1)).close()
     verify(mockFile, times(1)).delete()
 
-    logErrorArgs should not be empty
-    logErrorArgs.filter(_.isFailure) shouldBe empty
+    handleErrorArgs should not be empty
+    val failures: List[Try[Unit]] = handleErrorArgs.filter(_.isFailure)
+    failures.size shouldBe 1
+    failures.head.isFailure shouldBe true
+    failures.head match {
+      case Failure(_: IOException) => // no op
+      case a: Any => fail(s"Wrong handled result")
+    }
   }
 
-  it should "cleanup all other resources, return failure, and log when exception is thrown when closing channel" in new Fixture {
+  it should "cleanup all other resources, return failure, and handle errors when exception is thrown when closing channel" in new Fixture {
     when(mockChannel.tryLock()).thenReturn(mockFileLock)
     doThrow(new RuntimeException("doom")).when(mockChannel).close()
 
     val result: Try[Unit] = projectLock.lock()
     result.isSuccess shouldBe true
-    val releaseResult: Try[Unit] = projectLock.release()
-    releaseResult.isSuccess shouldBe true
+    projectLock.release()
     projectLock.isLocked shouldBe false
 
     verify(mockFileLock, times(1)).close()
     verify(mockChannel, times(1)).close()
     verify(mockFile, times(1)).delete()
 
-    logErrorArgs should not be empty
-    val failures: List[Try[Unit]] = logErrorArgs.filter(_.isFailure)
+    handleErrorArgs should not be empty
+    val failures: List[Try[Unit]] = handleErrorArgs.filter(_.isFailure)
     failures.size shouldBe 1
     failures.head match {
       case Failure(_: RuntimeException) => // no op
-      case a: Any => fail(s"Wrong logged result: $a")
+      case a: Any => fail(s"Wrong handled result: $a")
     }
   }
 
-  it should "cleanup all other resources, return success, and log when exception is thrown deleting file" in new Fixture {
+  it should "cleanup all other resources, return success, and handle errors when exception is thrown deleting file" in new Fixture {
     when(mockChannel.tryLock()).thenReturn(mockFileLock)
     doThrow(new RuntimeException("doom")).when(mockFile).delete()
 
     val result: Try[Unit] = projectLock.lock()
     result.isSuccess shouldBe true
-    val releaseResult: Try[Unit] = projectLock.release()
-    releaseResult.isSuccess shouldBe true
+    projectLock.release()
     projectLock.isLocked shouldBe false
 
     verify(mockFileLock, times(1)).close()
@@ -285,12 +283,12 @@ class ProjectLockSpec extends FlatSpec with MockitoSugar with BeforeAndAfterEach
     verify(mockChannel, times(1)).close()
     verify(mockFile, times(1)).delete()
 
-    logErrorArgs should not be empty
-    val failures: List[Try[Unit]] = logErrorArgs.filter(_.isFailure)
+    handleErrorArgs should not be empty
+    val failures: List[Try[Unit]] = handleErrorArgs.filter(_.isFailure)
     failures.size shouldBe 1
     failures.head match {
       case Failure(_: RuntimeException) => // no op
-      case a: Any => fail(s"Wrong logged result: $a")
+      case a: Any => fail(s"Wrong handled result: $a")
     }
   }
 }

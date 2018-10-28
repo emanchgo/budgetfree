@@ -66,7 +66,7 @@ private[ui] class ProjectChooser private(choiceStrings: List[String]) extends Di
     if(dialogButton == Open) {
       val selected: String = projectChoices.selectionModel().getSelectedItem
       selected match {
-        case NewProjectString => "" // Empty String means create a new persist!
+        case NewProjectString => "" // Empty String means create a new project!
         case _ => selected
       }
     }
