@@ -1,3 +1,11 @@
+package trove.core.services
+
+import java.io.File
+
+import trove.models.Project
+
+import scala.util.Try
+
 /*
  *  # Trove
  *
@@ -21,18 +29,9 @@
  *  along with Trove.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package trove.core.infrastructure.persist.projectlock
-
-import grizzled.slf4j.Logging
-
-import scala.util.control.NonFatal
-import scala.util.{Failure, Success}
-
-private[persist] trait LockReleasing extends Logging {
-  final def releaseLock(lock: ProjectLock): Unit =
-    lock.release() match {
-      case Success(_) =>
-      case Failure(NonFatal(e)) => logger.error("Error releasing project lock", e)
-      case Failure(e) => throw e
-    }
+private[core] trait ProjectService {
+  def projectsHomeDir: File
+  def listProjects: Try[Seq[String]]
+  def open(projectName: String): Try[Project]
+  def closeCurrentProject(): Try[Unit]
 }

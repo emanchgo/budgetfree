@@ -27,6 +27,7 @@ import akka.actor.ActorSystem
 import grizzled.slf4j.Logging
 import trove.core.infrastructure.event.EventService
 import trove.core.infrastructure.persist.ProjectPersistenceService
+import trove.core.services.ProjectService
 import trove.events.ProjectChanged
 import trove.exceptional.ValidationError
 
@@ -38,9 +39,9 @@ object Trove extends Logging {
   private[this] val actorSystem: ActorSystem = ActorSystem("Trove_Actor_System")
 
   val eventService: EventService = EventService(actorSystem)
-  val projectService: ProjectPersistenceService = ProjectPersistenceService()
+  val projectService: ProjectService = ProjectPersistenceService()
 
-  // For project name validation
+  // For persist name validation
   private[this] val ValidProjectNameChars: String = "^[a-zA-Z0-9_\\-]*$"
 
   def startup(): Try[Unit] = Success(Unit)
@@ -50,19 +51,19 @@ object Trove extends Logging {
   def apply(projectName: String): Try[Trove] =
     if (projectName.matches(ValidProjectNameChars)) {
       projectService.open(projectName).map { _ =>
-        logger.debug(s"Database for project $projectName successfully opened.")
+        logger.debug(s"Database for persist $projectName successfully opened.")
         val result = new Trove(projectName)
         eventService.publish(ProjectChanged(Some(projectName)))
         result
       }.recoverWith {
         case NonFatal(e) =>
-          logger.error(s"Project with name $projectName could not be initialized. Closing project (if it was open).")
+          logger.error(s"Project with name $projectName could not be initialized. Closing persist (if it was open).")
           projectService.closeCurrentProject()
           Failure(e)
       }
     }
     else {
-      ValidationError(s"""Invalid project name: "$projectName." Valid characters are US-ASCII alphanumeric characters, '_', and '-'.""")
+      ValidationError(s"""Invalid persist name: "$projectName." Valid characters are US-ASCII alphanumeric characters, '_', and '-'.""")
     }
 
   def closeCurrentProject(): Try[Unit] = projectService.closeCurrentProject().map { _ =>

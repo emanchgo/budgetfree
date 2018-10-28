@@ -21,25 +21,18 @@
  *  along with Trove.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package trove
+package trove.core.infrastructure.persist.lock
 
-// ejf-fixMe: implement
-class TroveSpec {
-/*
-Trove
-=====
-"listProjectNames" should "call the persistence manager"
-"apply" should "accept a valid persist name"
-it should "reject an invalid persist name"
-it should "call the persistence manager to open the persist"
+import grizzled.slf4j.Logging
 
-"openProject" should "publish a ProjectChanged event"
-it should "close the persist if a non-fatal error occurs"
+import scala.util.control.NonFatal
+import scala.util.{Failure, Success}
 
-"closeCurrentProject" should "call the persistence manager to close the persist"
-it should "publish a ProjectChanged event"
-
-"shutdown" should "call the persistence manager to close the persist"
-it should "shutdown the event service"
-*/
+private[persist] trait LockReleasing extends Logging {
+  final def releaseLock(lock: ProjectLock): Unit =
+    lock.release() match {
+      case Success(_) =>
+      case Failure(NonFatal(e)) => logger.error("Error releasing persist lock", e)
+      case Failure(e) => throw e
+    }
 }

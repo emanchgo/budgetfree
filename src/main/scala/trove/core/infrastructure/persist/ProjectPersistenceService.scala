@@ -31,9 +31,11 @@ import slick.jdbc.DriverDataSource
 import slick.jdbc.SQLiteProfile.backend._
 import slick.util.{AsyncExecutor, ClassLoaderUtil}
 import trove.constants.ProjectsHomeDir
-import trove.core.infrastructure.persist.projectlock.{LockReleasing, ProjectLock}
+import trove.core.infrastructure.persist.lock.{LockReleasing, ProjectLock}
 import trove.core.infrastructure.persist.schema.Tables
+import trove.core.services.ProjectService
 import trove.exceptional.PersistenceError
+import trove.models.Project
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration._
@@ -41,14 +43,14 @@ import scala.concurrent.{Await, Future}
 import scala.util.control.NonFatal
 import scala.util.{Failure, Success, Try}
 
-private[persist] trait ShutdownHook extends Logging { self : ProjectPersistenceService =>
+private[persist] trait ShutdownHook extends Logging { self : ProjectService =>
 
   private[persist] val shutdownHook = new Thread() {
     override def run(): Unit = {
       logger.warn(s"Shutdown hook executing")
       closeCurrentProject() match {
         case Success(_) =>
-        case Failure(NonFatal(e)) => logger.error("Shutdown hook was unable to execute for project service", e)
+        case Failure(NonFatal(e)) => logger.error("Shutdown hook was unable to execute for persist service", e)
         case Failure(e) => throw e
       }
     }
@@ -56,23 +58,16 @@ private[persist] trait ShutdownHook extends Logging { self : ProjectPersistenceS
   Runtime.getRuntime.addShutdownHook(shutdownHook)
 }
 
-private[persist] class Project(val name: String, private[persist] val lock: ProjectLock, private[persist] val db: DatabaseDef)
-  extends LockReleasing with Logging {
+private[persist] class ProjectImpl(val name: String, private[persist] val lock: ProjectLock, private[persist] val db: DatabaseDef)
+  extends Project with LockReleasing with Logging {
 
-  def close(): Unit = {
+  override def close(): Unit = {
     db.close()
-    logger.debug(s"Database for project $name closed")
+    logger.debug(s"Database for persist $name closed")
     releaseLock(lock)
-    logger.debug(s"Lock for project $name released")
-    logger.info(s"Closed project $name")
+    logger.debug(s"Lock for persist $name released")
+    logger.info(s"Closed persist $name")
   }
-}
-
-private[core] trait ProjectPersistenceService {
-  def projectsHomeDir: File
-  def listProjects: Try[Seq[String]]
-  def open(projectName: String): Try[Project]
-  def closeCurrentProject(): Try[Unit]
 }
 
 private[core] object ProjectPersistenceService {
@@ -80,9 +75,9 @@ private[core] object ProjectPersistenceService {
   val JdbcPrefix = "jdbc:sqlite:"
   val DbFilenameSuffix: String = ".sqlite3"
 
-  private[this] lazy val instance = new ProjectPersistenceServiceImpl(ProjectsHomeDir) with LivePersistence with ShutdownHook
+  private[this] lazy val instance = new ProjectServiceImpl(ProjectsHomeDir) with LivePersistence with ShutdownHook
 
-  def apply(): ProjectPersistenceService = instance
+  def apply(): ProjectService = instance
 }
 
 private[persist] case class DatabaseConfig(
@@ -102,7 +97,7 @@ private[persist] case class DatabaseConfig(
   keepAliveConnection: Boolean = false
 )
 
-private[persist] abstract class ProjectPersistenceServiceImpl(val projectsHomeDir: File) extends ProjectPersistenceService with PersistenceOps with LockReleasing
+private[persist] abstract class ProjectServiceImpl(val projectsHomeDir: File) extends ProjectService with PersistenceOps with LockReleasing
   with Logging {
 
   require(projectsHomeDir.isDirectory)
@@ -110,7 +105,7 @@ private[persist] abstract class ProjectPersistenceServiceImpl(val projectsHomeDi
   import ProjectPersistenceService._
   import slick.jdbc.SQLiteProfile.backend._
 
-  // The current active project
+  // The current active persist
   @volatile private[this] var currentProject: Option[Project] = None
 
   override def listProjects: Try[Seq[String]] = Try {
@@ -119,7 +114,7 @@ private[persist] abstract class ProjectPersistenceServiceImpl(val projectsHomeDi
   }
 
   override def open(projectName: String): Try[Project] = currentProject.fold[Try[Project]] {
-    logger.debug(s"Opening project: $projectName")
+    logger.debug(s"Opening persist: $projectName")
 
     val projectLock: ProjectLock = newProjectLock(projectsHomeDir, projectName)
     val lockResult = projectLock.lock()
@@ -148,7 +143,7 @@ private[persist] abstract class ProjectPersistenceServiceImpl(val projectsHomeDi
         val versionCheckResult: Future[Try[Project]] = setupResult.flatMap { _ =>
           runDbIOAction(Tables.version.result)(db).map {
             case rows: Seq[DBVersion] if rows.length == 1 && rows.head == Tables.CurrentDbVersion =>
-              val prj = new Project(projectName, projectLock, db)
+              val prj = new ProjectImpl(projectName, projectLock, db)
               Success(prj)
             case rows: Seq[DBVersion] if rows.length == 1 => PersistenceError(s"Invalid database version: ${rows.head.id}")
             case rows: Seq[DBVersion] => PersistenceError(s"Incorrect number of rows in the VERSION table: found ${rows.size} rows")
@@ -163,13 +158,13 @@ private[persist] abstract class ProjectPersistenceServiceImpl(val projectsHomeDi
         currentProject = projectResult.toOption
         logger.info(s"Project opened: ${prj.name}")
       case Failure(e) =>
-        logger.error("Error creating project", e)
+        logger.error("Error creating persist", e)
         releaseLock(projectLock)
     }
 
     projectResult
 
-  } (prj => PersistenceError(s"Unable to open project - ${prj.name} is currently open"))
+  } (prj => PersistenceError(s"Unable to open persist - ${prj.name} is currently open"))
 
 
   private[this] def openDatabase(dbConfig: DatabaseConfig): Try[DatabaseDef] = Try {
@@ -207,8 +202,8 @@ private[persist] abstract class ProjectPersistenceServiceImpl(val projectsHomeDi
         currentProject = None
       }.recoverWith {
         case NonFatal(e) =>
-          logger.error("Error closing project")
-          PersistenceError("Unable to close project", e)
+          logger.error("Error closing persist")
+          PersistenceError("Unable to close persist", e)
       }
   }
 }

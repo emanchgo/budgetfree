@@ -21,14 +21,14 @@
  *  along with Trove.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package trove.core.infrastructure.persist.projectlock
+package trove.core.infrastructure.persist.lock
 
 import java.io.{File, IOException, RandomAccessFile}
 import java.nio.channels.{FileChannel, FileLock}
 
 import grizzled.slf4j.Logging
 import trove.constants._
-import trove.core.infrastructure.persist.projectlock.ProjectLock.EnvironmentOps
+import trove.core.infrastructure.persist.lock.ProjectLock.EnvironmentOps
 import trove.exceptional.{SystemError, SystemException}
 
 import scala.util.control.NonFatal
@@ -98,18 +98,18 @@ private[persist] class ProjectLock(projectsHomeDir: File, projectName: String) e
     }
 
     Option(tryLockResult).fold[Try[Resources]] {
-      logger.warn(s"Failed to acquire project lock for $projectName (${file.getAbsolutePath})")
-      SystemError(s"""Another instance of $ApplicationName currently has project "$projectName" open.""")
+      logger.warn(s"Failed to acquire persist lock for $projectName (${file.getAbsolutePath})")
+      SystemError(s"""Another instance of $ApplicationName currently has persist "$projectName" open.""")
     } {
       lock =>
-        logger.debug(s"Acquired single application instance lock for project $projectName.")
+        logger.debug(s"Acquired single application instance lock for persist $projectName.")
         val res = Resources(channel, lock)
         resources = Some(res)
       Success(res)
     }
   }.flatten.map(_ => ()).recoverWith {
     case e: SystemException => Failure(e)
-    case NonFatal(e) => SystemError("Error acquiring project lock", e)
+    case NonFatal(e) => SystemError("Error acquiring persist lock", e)
   }.recoverWith {
     case e =>
       release()

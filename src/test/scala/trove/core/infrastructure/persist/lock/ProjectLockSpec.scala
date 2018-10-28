@@ -21,7 +21,7 @@
  *  along with Trove.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package trove.core.infrastructure.persist.projectlock
+package trove.core.infrastructure.persist.lock
 
 import java.io.{File, IOException, RandomAccessFile}
 import java.nio.channels.FileLock

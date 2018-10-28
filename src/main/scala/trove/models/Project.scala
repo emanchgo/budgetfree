@@ -21,25 +21,9 @@
  *  along with Trove.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package trove
+package trove.models
 
-// ejf-fixMe: implement
-class TroveSpec {
-/*
-Trove
-=====
-"listProjectNames" should "call the persistence manager"
-"apply" should "accept a valid persist name"
-it should "reject an invalid persist name"
-it should "call the persistence manager to open the persist"
-
-"openProject" should "publish a ProjectChanged event"
-it should "close the persist if a non-fatal error occurs"
-
-"closeCurrentProject" should "call the persistence manager to close the persist"
-it should "publish a ProjectChanged event"
-
-"shutdown" should "call the persistence manager to close the persist"
-it should "shutdown the event service"
-*/
+trait Project {
+  def name: String
+  def close(): Unit
 }

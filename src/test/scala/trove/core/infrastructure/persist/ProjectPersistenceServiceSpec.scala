@@ -32,7 +32,7 @@ import org.scalatest.{FlatSpec, Matchers}
 import slick.dbio.{DBIOAction, NoStream}
 import slick.util.AsyncExecutor
 import trove.constants.ProjectsHomeDir
-import trove.core.infrastructure.persist.projectlock.ProjectLock
+import trove.core.infrastructure.persist.lock.ProjectLock
 import trove.core.infrastructure.persist.schema.Tables
 
 import scala.concurrent.Future
@@ -46,7 +46,7 @@ class ProjectPersistenceServiceSpec extends FlatSpec with Matchers with MockitoS
     val tempDir: File = mock[File]
     when(tempDir.isDirectory).thenReturn(true)
     when(tempDir.listFiles()).thenReturn(Array.empty[File])
-    val projectService: ProjectPersistenceServiceImpl = new ProjectPersistenceServiceImpl(tempDir) with MockPersistence
+    val projectService: ProjectServiceImpl = new ProjectServiceImpl(tempDir) with MockPersistence
 
     def mockFile(name: String, directory: Boolean = false): File = {
       require(name != null)
@@ -106,8 +106,8 @@ class ProjectPersistenceServiceSpec extends FlatSpec with Matchers with MockitoS
 
   }
 
-  "Trove project persistence service" should "utilize project home dir" in {
-    ProjectPersistenceService().asInstanceOf[ProjectPersistenceServiceImpl].projectsHomeDir shouldBe ProjectsHomeDir
+  "Trove persist persistence service" should "utilize persist home dir" in {
+    ProjectPersistenceService().asInstanceOf[ProjectServiceImpl].projectsHomeDir shouldBe ProjectsHomeDir
   }
 
   it should "add shutdown hook" in {
@@ -115,15 +115,15 @@ class ProjectPersistenceServiceSpec extends FlatSpec with Matchers with MockitoS
     Runtime.getRuntime.removeShutdownHook(shutdownHook) shouldBe true
   }
 
-  "listProjectNames" should "return nothing if the project directory is empty" in new ProjectDirFixture {
+  "listProjectNames" should "return nothing if the persist directory is empty" in new ProjectDirFixture {
     projectService.listProjects shouldBe Success(Seq.empty)
   }
 
-  it should "return nothing if the project directory contains only ignored files" in new IgnoredContentsFixture {
+  it should "return nothing if the persist directory contains only ignored files" in new IgnoredContentsFixture {
     projectService.listProjects shouldBe Success(Seq.empty)
   }
 
-  it should "strip the filename extension from valid project files" in new NormalProjectsFixture {
+  it should "strip the filename extension from valid persist files" in new NormalProjectsFixture {
     val result: Try[Seq[String]] = projectService.listProjects
     result.isFailure shouldBe false
     val projectNames: Seq[String] = result.get
@@ -131,7 +131,7 @@ class ProjectPersistenceServiceSpec extends FlatSpec with Matchers with MockitoS
     projectNames.foreach(_.endsWith(DbFilenameSuffix) shouldBe false)
   }
 
-  it should "return a sorted list of project names with filename extensions stripped" in new NormalProjectsFixture {
+  it should "return a sorted list of persist names with filename extensions stripped" in new NormalProjectsFixture {
     val result: Try[Seq[String]] = projectService.listProjects
     result.isFailure shouldBe false
     result.get shouldBe Seq("abc", "def", "ghi")
@@ -142,7 +142,7 @@ class ProjectPersistenceServiceSpec extends FlatSpec with Matchers with MockitoS
     when(file.isDirectory).thenReturn(true)
     val ex = new RuntimeException("doom")
     when(file.listFiles).thenThrow(ex)
-    val projectService = new ProjectPersistenceServiceImpl(file) with MockPersistence
+    val projectService = new ProjectServiceImpl(file) with MockPersistence
     projectService.listProjects match {
       case Failure(e) => e shouldBe ex
       case somethingElse => fail(s"Unexpected result: $somethingElse")
@@ -150,45 +150,47 @@ class ProjectPersistenceServiceSpec extends FlatSpec with Matchers with MockitoS
     }
   }
 
-  "open" should "open an existing project and lock it" in new NormalProjectsFixture {
+  "open" should "open an existing persist and lock it" in new NormalProjectsFixture {
     val projectNames: Try[Seq[String]] = projectService.listProjects
     projectNames.isSuccess shouldBe true
     val projectName: String = projectNames.get.head
     projectService.open(projectName) match {
-      case Success(project) =>
+      case Success(p) =>
+        p shouldBe a [ProjectImpl]
+        val project = p.asInstanceOf[ProjectImpl]
         project.name shouldBe projectName
         project.db should not be null
         verify(project.lock, times(1)).lock()
         verify(project.lock, never()).release()
-      case somethingElse => fail(s"Wrong result when opening project: $somethingElse")
+      case somethingElse => fail(s"Wrong result when opening persist: $somethingElse")
     }
   }
 /*
 Persistence service
 ===================
 
-it should "open an existing project without creating database or tables"
-it should "create a new project with initial tables and lock the project"
-it should "populate the version number table when creating a new project"
+it should "open an existing persist without creating database or tables"
+it should "create a new persist with initial tables and lock the persist"
+it should "populate the version number table when creating a new persist"
 it should "open the database with all the right settings"
-it should "set the current project upon successful project opening"
+it should "set the current persist upon successful persist opening"
 
-it should "fail with a SystemError if unable to obtain project lock"
-it should "fail with a PersistenceError and not lock a project if another project is already open"
-it should "fail with a PersistenceError and clean up project lock if unable to open database"
-it should "fail with a PersistenceError if the wrong database version exists and clean up the project lock"
-it should "fail with a PersistenceError if there are too many rows in the database version table and clean up the project lock"
+it should "fail with a SystemError if unable to obtain persist lock"
+it should "fail with a PersistenceError and not lock a persist if another persist is already open"
+it should "fail with a PersistenceError and clean up persist lock if unable to open database"
+it should "fail with a PersistenceError if the wrong database version exists and clean up the persist lock"
+it should "fail with a PersistenceError if there are too many rows in the database version table and clean up the persist lock"
 
-"closeCurrentProject" should "clear the current project upon successful project closing"
-it should "return success if there is no open project"
-it should "close the database upon successful project closing"
-it should "release the project lock upon successful project closing"
-it should "remove the shutdown hook upon successful project closing"
+"closeCurrentProject" should "clear the current persist upon successful persist closing"
+it should "return success if there is no open persist"
+it should "close the database upon successful persist closing"
+it should "release the persist lock upon successful persist closing"
+it should "remove the shutdown hook upon successful persist closing"
 it should "fail with a PersistenceError if the database cannot be closed"
-it should "fail with a PersistenceError if it cannot release the project lock"
+it should "fail with a PersistenceError if it cannot release the persist lock"
 it should "fail with a PersistenceError if it cannot remove the shutdown hook"
 
-"shutdown hook" should "close the database and release the project lock if invoked"
+"shutdown hook" should "close the database and release the persist lock if invoked"
 it should "not try to remove itself from the jvm shutdown hooks"
 */
 }

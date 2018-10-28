@@ -29,7 +29,7 @@ import javax.sql.DataSource
 import slick.dbio.{DBIOAction, NoStream}
 import slick.jdbc.SQLiteProfile.backend._
 import slick.util.AsyncExecutor
-import trove.core.infrastructure.persist.projectlock.ProjectLock
+import trove.core.infrastructure.persist.lock.ProjectLock
 
 import scala.concurrent.Future
 import scala.reflect.runtime.universe._
