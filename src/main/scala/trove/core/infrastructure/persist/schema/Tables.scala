@@ -57,4 +57,6 @@ private[persist] object Tables {
 
     version += CurrentDbVersion
   )
+
+  lazy val versionQuery = Tables.version.result
 }

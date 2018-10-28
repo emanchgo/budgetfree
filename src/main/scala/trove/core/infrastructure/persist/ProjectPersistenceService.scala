@@ -43,7 +43,7 @@ import scala.concurrent.{Await, Future}
 import scala.util.control.NonFatal
 import scala.util.{Failure, Success, Try}
 
-private[persist] trait ShutdownHook extends Logging { self : ProjectService =>
+private[persist] trait HasShutdownHook extends Logging { self : ProjectService =>
 
   private[persist] val shutdownHook = new Thread() {
     override def run(): Unit = {
@@ -77,7 +77,7 @@ private[core] object ProjectPersistenceService {
   val JdbcPrefix = "jdbc:sqlite:"
   val DbFilenameSuffix: String = ".sqlite3"
 
-  private[this] lazy val instance = new ProjectPersistenceServiceImpl(ProjectsHomeDir) with LivePersistence with ShutdownHook
+  private[this] lazy val instance = new ProjectPersistenceServiceImpl(ProjectsHomeDir) with LivePersistence with HasShutdownHook
 
   def apply(): ProjectService = instance
 }
@@ -135,7 +135,7 @@ private[persist] abstract class ProjectPersistenceServiceImpl(val projectsHomeDi
     val projectResult: Try[ProjectImpl] = openResult.flatMap {
       db =>
 
-        import slick.jdbc.SQLiteProfile.api._
+
 
         val setupResult: Future[Unit] = if (create) {
           runDbIOAction(Tables.setupAction)(db)
@@ -145,7 +145,7 @@ private[persist] abstract class ProjectPersistenceServiceImpl(val projectsHomeDi
         }
 
         val versionCheckResult: Future[Try[ProjectImpl]] = setupResult.flatMap { _ =>
-          runDbIOAction(Tables.version.result)(db).map {
+          runDbIOAction(Tables.versionQuery)(db).map {
             case rows: Seq[DBVersion] if rows.length == 1 && rows.head == Tables.CurrentDbVersion =>
               val prj = new ProjectImpl(projectName, projectLock, db)
               Success(prj)
