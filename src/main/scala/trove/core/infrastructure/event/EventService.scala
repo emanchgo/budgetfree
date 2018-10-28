@@ -40,7 +40,8 @@ private[event] sealed case class UntypedEvent(event: Event)
 
 sealed class Subscriber(listener: EventListener) extends Actor {
   override def receive: PartialFunction[Any, Unit] = {
-    case UntypedEvent(event) if listener.onEvent.isDefinedAt(event) => listener.onEvent(event)
+    case UntypedEvent(event) if listener.onEvent.isDefinedAt(event) =>
+      listener.onEvent(event)
   }
 }
 

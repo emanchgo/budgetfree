@@ -71,7 +71,8 @@ object Trove extends Logging {
   }
 
   def shutdown(): Try[Unit] = projectService.closeCurrentProject().flatMap { _ =>
-    Try(eventService.shutdown()).map(_ => Unit)
+    Try(eventService.shutdown()).map(_ =>
+        Unit)
   }
 }
 

@@ -23,7 +23,4 @@
 
 package trove.models
 
-trait Project {
-  def name: String
-  def close(): Unit
-}
+case class Project(name: String)

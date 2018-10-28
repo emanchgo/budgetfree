@@ -32,7 +32,9 @@ private[persist] trait LockReleasing extends Logging {
   final def releaseLock(lock: ProjectLock): Unit =
     lock.release() match {
       case Success(_) =>
-      case Failure(NonFatal(e)) => logger.error("Error releasing persist lock", e)
-      case Failure(e) => throw e
+      case Failure(NonFatal(e)) =>
+        logger.error("Error releasing persist lock", e)
+      case Failure(e) =>
+        throw e
     }
 }

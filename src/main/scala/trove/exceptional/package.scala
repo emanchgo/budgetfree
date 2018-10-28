@@ -54,8 +54,10 @@ package object exceptional {
     def apply(message: String, t: Throwable) = Failure(SystemException(message, Some(t)))
     def apply(message: String) = Failure(SystemException(message))
     def unapply(tr: Try[_]): Option[SystemException] = tr match {
-      case Failure(e: SystemException) => Some(e)
-      case _ => None
+      case Failure(e: SystemException) =>
+        Some(e)
+      case _ =>
+        None
     }
   }
 
@@ -63,8 +65,10 @@ package object exceptional {
     def apply(message: String, t: Throwable) = Failure(NotFoundException(message, Some(t)))
     def apply(message: String) = Failure(NotFoundException(message))
     def unapply(tr: Try[_]): Option[NotFoundException] = tr match {
-      case Failure(e: NotFoundException) => Some(e)
-      case _ => None
+      case Failure(e: NotFoundException) =>
+        Some(e)
+      case _ =>
+        None
     }
   }
 
@@ -75,8 +79,10 @@ package object exceptional {
     def apply(message: String, t: Throwable, errors: Seq[String]) = Failure(ValidationException(message, Some(t), errors))
     def apply(message: String, t: Throwable, error: String) = Failure(ValidationException(message, Some(t), Seq(error)))
     def unapply(tr: Try[_]): Option[ValidationException] = tr match {
-      case Failure(e: ValidationException) => Some(e)
-      case _ => None
+      case Failure(e: ValidationException) =>
+        Some(e)
+      case _ =>
+        None
     }
   }
 
@@ -84,8 +90,10 @@ package object exceptional {
     def apply(message: String, t: Throwable) = Failure(PersistenceException(message, Some(t)))
     def apply(message: String) = Failure(PersistenceException(message))
     def unapply(tr: Try[_]): Option[PersistenceException] = tr match {
-      case Failure(e: PersistenceException) => Some(e)
-      case _ => None
+      case Failure(e: PersistenceException) =>
+        Some(e)
+      case _ =>
+        None
     }
   }
 

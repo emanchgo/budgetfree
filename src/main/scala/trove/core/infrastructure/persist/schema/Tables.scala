@@ -43,7 +43,8 @@ private[persist] object Tables {
   def enumValueMapper(enum: Enumeration): JdbcType[enum.Value] with BaseTypedType[enum.Value] =
     MappedColumnType.base[enum.Value, String](
       _.toString,
-      s => Try(enum.withName(s)).getOrElse(throw new IllegalArgumentException(
+      s =>
+        Try(enum.withName(s)).getOrElse(throw new IllegalArgumentException(
         s"enumeration $s doesn't exist $enum [${enum.values.mkString(",")}]"))
     )
 

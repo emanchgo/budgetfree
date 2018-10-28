@@ -44,9 +44,12 @@ private[persist] object DBVersionDAO {
 private[persist] abstract class DBVersionDAOImpl extends DBVersionDAO with DbExec[DBVersion] {
   override def get: Try[DBVersion] = {
     exec(Tables.version.result).flatMap {
-        case rows: Seq[DBVersion] if rows.length == 1 && rows.head == Tables.CurrentDbVersion => Success(rows.head)
-        case rows: Seq[DBVersion] if rows.length == 1 => PersistenceError(s"Invalid database version: ${rows.head.id}")
-        case rows: Seq[DBVersion] => PersistenceError(s"Incorrect number of rows in the VERSION table: found ${rows.size} rows")
+        case rows: Seq[DBVersion] if rows.length == 1 && rows.head == Tables.CurrentDbVersion =>
+          Success(rows.head)
+        case rows: Seq[DBVersion] if rows.length == 1 =>
+          PersistenceError(s"Invalid database version: ${rows.head.id}")
+        case rows: Seq[DBVersion] =>
+          PersistenceError(s"Incorrect number of rows in the VERSION table: found ${rows.size} rows")
       }
     }
 }

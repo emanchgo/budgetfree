@@ -41,7 +41,8 @@ private[dao] trait DbExec[+S] { self: DbRunOp[S] =>
   // Call this method
   def exec[R >: Seq[S] : TypeTag](action: DBIOAction[R, NoStream, Nothing]): Try[R] =
     self.run(action).recoverWith {
-      case NonFatal(e) => PersistenceError("Database execution error", e)
+      case NonFatal(e) =>
+        PersistenceError("Database execution error", e)
     }
 }
 

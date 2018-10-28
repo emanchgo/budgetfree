@@ -64,9 +64,13 @@ private[persist] object ProjectLock {
     override def newRandomAccessFile(file: File): RandomAccessFile = new RandomAccessFile(file: File, "rw")
     override def newChannel(raf: RandomAccessFile): LockableChannel = new LockableChannel(raf)
     override def logIfError(result: Try[Unit]): Unit = result match {
-      case Success(_) => // No-op
-      case Failure(NonFatal(e)) => logger.error("Error!", e)
-      case Failure(e) => throw e // Fatal, throw it, bubble it up!
+      case Success(_) =>
+      // No-op
+      case Failure(NonFatal(e)) =>
+        logger.error("Error!", e)
+      case Failure(e) =>
+        throw e
+      // Fatal, throw it, bubble it up!
     }
   }
 }
@@ -107,9 +111,12 @@ private[persist] class ProjectLock(projectsHomeDir: File, projectName: String) e
         resources = Some(res)
       Success(res)
     }
-  }.flatten.map(_ => ()).recoverWith {
-    case e: SystemException => Failure(e)
-    case NonFatal(e) => SystemError("Error acquiring persist lock", e)
+  }.flatten.map(_ =>
+    ()).recoverWith {
+    case e: SystemException =>
+      Failure(e)
+    case NonFatal(e) =>
+      SystemError("Error acquiring persist lock", e)
   }.recoverWith {
     case e =>
       release()
@@ -123,7 +130,8 @@ private[persist] class ProjectLock(projectsHomeDir: File, projectName: String) e
       s"""$ApplicationName is not currently locked by the virtual machine.""")) { res =>
 
       val result = close(res.channel, Some(res.lock), Some(file))
-      result.foreach(_ => resources = None)
+      result.foreach(_ =>
+        resources = None)
       result
   }
 
@@ -134,7 +142,8 @@ private[persist] class ProjectLock(projectsHomeDir: File, projectName: String) e
     }
 
     logIfError(Try(channel.close()))
-    file.foreach(f => logIfError(Try(f.delete())))
+    file.foreach(f =>
+      logIfError(Try(f.delete())))
 
     result
   }

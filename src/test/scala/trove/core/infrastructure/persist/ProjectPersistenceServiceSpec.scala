@@ -144,25 +144,26 @@ class ProjectPersistenceServiceSpec extends FlatSpec with Matchers with MockitoS
     when(file.listFiles).thenThrow(ex)
     val projectService = new ProjectServiceImpl(file) with MockPersistence
     projectService.listProjects match {
-      case Failure(e) => e shouldBe ex
-      case somethingElse => fail(s"Unexpected result: $somethingElse")
+      case Failure(e) =>
+        e shouldBe ex
+      case somethingElse =>
+        fail(s"Unexpected result: $somethingElse")
 
     }
   }
 
-  "open" should "open an existing persist and lock it" in new NormalProjectsFixture {
+  "initialzieProject" should "open an existing persist and lock it" in new NormalProjectsFixture {
     val projectNames: Try[Seq[String]] = projectService.listProjects
     projectNames.isSuccess shouldBe true
     val projectName: String = projectNames.get.head
-    projectService.open(projectName) match {
-      case Success(p) =>
-        p shouldBe a [ProjectImpl]
-        val project = p.asInstanceOf[ProjectImpl]
+    projectService.initializeProject(projectName) match {
+      case Success(project) =>
         project.name shouldBe projectName
         project.db should not be null
         verify(project.lock, times(1)).lock()
         verify(project.lock, never()).release()
-      case somethingElse => fail(s"Wrong result when opening persist: $somethingElse")
+      case somethingElse =>
+        fail(s"Wrong result when opening persist: $somethingElse")
     }
   }
 /*

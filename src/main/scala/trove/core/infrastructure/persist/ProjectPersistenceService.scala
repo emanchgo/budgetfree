@@ -50,18 +50,20 @@ private[persist] trait ShutdownHook extends Logging { self : ProjectService =>
       logger.warn(s"Shutdown hook executing")
       closeCurrentProject() match {
         case Success(_) =>
-        case Failure(NonFatal(e)) => logger.error("Shutdown hook was unable to execute for persist service", e)
-        case Failure(e) => throw e
+        case Failure(NonFatal(e)) =>
+          logger.error("Shutdown hook was unable to execute for persist service", e)
+        case Failure(e) =>
+          throw e
       }
     }
   }
   Runtime.getRuntime.addShutdownHook(shutdownHook)
 }
 
-private[persist] class ProjectImpl(val name: String, private[persist] val lock: ProjectLock, private[persist] val db: DatabaseDef)
-  extends Project with LockReleasing with Logging {
+private[persist] class ProjectImpl(val name: String, val lock: ProjectLock, val db: DatabaseDef)
+  extends LockReleasing with Logging {
 
-  override def close(): Unit = {
+  def close(): Unit = {
     db.close()
     logger.debug(s"Database for persist $name closed")
     releaseLock(lock)
@@ -106,14 +108,16 @@ private[persist] abstract class ProjectServiceImpl(val projectsHomeDir: File) ex
   import slick.jdbc.SQLiteProfile.backend._
 
   // The current active persist
-  @volatile private[this] var currentProject: Option[Project] = None
+  @volatile private[this] var currentProject: Option[ProjectImpl] = None
 
   override def listProjects: Try[Seq[String]] = Try {
     projectsHomeDir.listFiles.filter(_.isFile).map(_.getName).filterNot(_.endsWith(ProjectLock.LockfileSuffix)).filterNot(_.startsWith("."))
       .map(_.stripSuffix(DbFilenameSuffix)).sorted
   }
 
-  override def open(projectName: String): Try[Project] = currentProject.fold[Try[Project]] {
+  override def open(projectName: String): Try[Project] = initializeProject(projectName).map(p => Project(p.name))
+
+  private[persist] def initializeProject(projectName: String): Try[ProjectImpl] = currentProject.fold[Try[ProjectImpl]] {
     logger.debug(s"Opening persist: $projectName")
 
     val projectLock: ProjectLock = newProjectLock(projectsHomeDir, projectName)
@@ -128,7 +132,7 @@ private[persist] abstract class ProjectServiceImpl(val projectsHomeDir: File) ex
       openDatabase(DatabaseConfig(dbURL))
     }
 
-    val projectResult: Try[Project] = openResult.flatMap {
+    val projectResult: Try[ProjectImpl] = openResult.flatMap {
       db =>
 
         import slick.jdbc.SQLiteProfile.api._
@@ -140,13 +144,15 @@ private[persist] abstract class ProjectServiceImpl(val projectsHomeDir: File) ex
           Future.successful(())
         }
 
-        val versionCheckResult: Future[Try[Project]] = setupResult.flatMap { _ =>
+        val versionCheckResult: Future[Try[ProjectImpl]] = setupResult.flatMap { _ =>
           runDbIOAction(Tables.version.result)(db).map {
             case rows: Seq[DBVersion] if rows.length == 1 && rows.head == Tables.CurrentDbVersion =>
               val prj = new ProjectImpl(projectName, projectLock, db)
               Success(prj)
-            case rows: Seq[DBVersion] if rows.length == 1 => PersistenceError(s"Invalid database version: ${rows.head.id}")
-            case rows: Seq[DBVersion] => PersistenceError(s"Incorrect number of rows in the VERSION table: found ${rows.size} rows")
+            case rows: Seq[DBVersion] if rows.length == 1 =>
+              PersistenceError(s"Invalid database version: ${rows.head.id}")
+            case rows: Seq[DBVersion] =>
+              PersistenceError(s"Incorrect number of rows in the VERSION table: found ${rows.size} rows")
           }
         }
 
@@ -155,7 +161,7 @@ private[persist] abstract class ProjectServiceImpl(val projectsHomeDir: File) ex
 
     projectResult match {
       case Success(prj) =>
-        currentProject = projectResult.toOption
+        currentProject = Some(prj)
         logger.info(s"Project opened: ${prj.name}")
       case Failure(e) =>
         logger.error("Error creating persist", e)
@@ -164,8 +170,9 @@ private[persist] abstract class ProjectServiceImpl(val projectsHomeDir: File) ex
 
     projectResult
 
-  } (prj => PersistenceError(s"Unable to open persist - ${prj.name} is currently open"))
-
+  } (prj =>
+    PersistenceError(s"Unable to open persist - ${prj.name} is currently open")
+  )
 
   private[this] def openDatabase(dbConfig: DatabaseConfig): Try[DatabaseDef] = Try {
 
@@ -192,12 +199,13 @@ private[persist] abstract class ProjectServiceImpl(val projectsHomeDir: File) ex
 
     forDataSource(ds = dds, maxConnections =  Some(numWorkers), executor = executor, keepAliveConnection = false)
   }.recoverWith {
-    case NonFatal(e) => PersistenceError("Unable to open database", e)
+    case NonFatal(e) =>
+      PersistenceError("Unable to open database", e)
   }
 
 
   override def closeCurrentProject(): Try[Unit] =
-    currentProject.fold[Try[Unit]](Success({})) { project: Project =>
+    currentProject.fold[Try[Unit]](Success({})) { project: ProjectImpl =>
       Try(project.close()).map { _ =>
         currentProject = None
       }.recoverWith {
