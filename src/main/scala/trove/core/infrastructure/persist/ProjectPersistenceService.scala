@@ -134,9 +134,6 @@ private[persist] abstract class ProjectPersistenceServiceImpl(val projectsHomeDi
 
     val projectResult: Try[ProjectImpl] = openResult.flatMap {
       db =>
-
-
-
         val setupResult: Future[Unit] = if (create) {
           runDbIOAction(Tables.setupAction)(db)
         }
@@ -145,14 +142,16 @@ private[persist] abstract class ProjectPersistenceServiceImpl(val projectsHomeDi
         }
 
         val versionCheckResult: Future[Try[ProjectImpl]] = setupResult.flatMap { _ =>
-          runDbIOAction(Tables.versionQuery)(db).map {
-            case rows: Seq[DBVersion] if rows.length == 1 && rows.head == Tables.CurrentDbVersion =>
-              val prj = new ProjectImpl(projectName, projectLock, db)
-              Success(prj)
-            case rows: Seq[DBVersion] if rows.length == 1 =>
-              PersistenceError(s"Invalid database version: ${rows.head.id}")
-            case rows: Seq[DBVersion] =>
-              PersistenceError(s"Incorrect number of rows in the VERSION table: found ${rows.size} rows")
+          runDbIOAction(Tables.versionQuery)(db).map { rows =>
+            rows.toList match {
+              case Tables.CurrentDbVersion :: Nil =>
+                val prj = new ProjectImpl(projectName, projectLock, db)
+                Success(prj)
+              case _ :: Nil =>
+                PersistenceError(s"Invalid database version: ${rows.head.id}")
+              case _ =>
+                PersistenceError(s"Incorrect number of rows in the VERSION table: found ${rows.size} rows")
+            }
           }
         }
 

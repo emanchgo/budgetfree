@@ -1,9 +1,11 @@
 package trove.core.infrastructure.persist.schema
 
 import slick.ast.BaseTypedType
+import slick.dbio.Effect
 import slick.jdbc.JdbcType
 import slick.jdbc.SQLiteProfile.api._
 import slick.lifted.ProvenShape
+import slick.sql.FixedSqlStreamingAction
 import trove.core.infrastructure.persist.DBVersion
 import trove.models.{Account, AccountType}
 
@@ -58,5 +60,5 @@ private[persist] object Tables {
     version += CurrentDbVersion
   )
 
-  lazy val versionQuery = Tables.version.result
+  lazy val versionQuery: FixedSqlStreamingAction[Seq[DBVersion], DBVersion, Effect.Read] = Tables.version.result
 }

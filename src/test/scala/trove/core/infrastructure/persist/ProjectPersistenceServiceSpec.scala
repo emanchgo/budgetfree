@@ -173,8 +173,7 @@ class ProjectPersistenceServiceSpec extends FlatSpec with Matchers with MockitoS
     }
   }
 
-
-  it should "create a new project with initial tables and lock the project" in new NormalProjectsFixture {
+  it should "create a new project with initial tables, create the version table, and lock the project" in new NormalProjectsFixture {
     val projectNames: Try[Seq[String]] = projectService.listProjects
     projectNames.isSuccess shouldBe true
     val allProjectNames: Seq[String] = projectNames.get
