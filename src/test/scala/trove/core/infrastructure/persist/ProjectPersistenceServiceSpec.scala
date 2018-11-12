@@ -30,7 +30,8 @@ import org.mockito.Mockito._
 import org.scalatest.mockito.MockitoSugar
 import org.scalatest.{FlatSpec, Matchers}
 import slick.dbio.{DBIOAction, NoStream}
-import slick.util.AsyncExecutor
+import slick.jdbc.DriverDataSource
+import slick.util.{AsyncExecutor, ClassLoaderUtil}
 import trove.constants.ProjectsHomeDir
 import trove.core.infrastructure.persist.lock.ProjectLock
 import trove.core.infrastructure.persist.schema.Tables
@@ -47,6 +48,7 @@ class ProjectPersistenceServiceSpec extends FlatSpec with Matchers with MockitoS
     val mockDbFile: File = mock[File]
     when(mockDbFile.exists()).thenReturn(true)
     var runDbIOActions: Seq[DBIOAction[_, NoStream, Nothing]] = Seq.empty
+    var forDataSourceArgs: Seq[(DataSource, Option[Int], AsyncExecutor, Boolean)] = Seq.empty
 
     trait MockPersistence extends PersistenceOps {
       import slick.jdbc.SQLiteProfile.backend._
@@ -55,7 +57,7 @@ class ProjectPersistenceServiceSpec extends FlatSpec with Matchers with MockitoS
 
       override def newProjectLock(projectsHomeDir: File, projectName: String): ProjectLock = {
         val lock = mock[ProjectLock]
-        when(lock.lock()).thenReturn(Success({}))
+        when(lock.lock()).thenReturn(Success())
         lock
       }
 
@@ -65,7 +67,10 @@ class ProjectPersistenceServiceSpec extends FlatSpec with Matchers with MockitoS
                                   ds: DataSource,
                                   maxConnections: Option[Int],
                                   executor: AsyncExecutor,
-                                  keepAliveConnection: Boolean): DatabaseDef = mockDb
+                                  keepAliveConnection: Boolean): DatabaseDef = {
+        (ds, maxConnections, executor, keepAliveConnection) +: forDataSourceArgs
+        mockDb
+      }
 
       override def runDbIOAction[R: TypeTag](a: DBIOAction[R,NoStream,Nothing])(db: DatabaseDef) : Future[R] = {
         runDbIOActions = runDbIOActions :+ a
@@ -187,6 +192,51 @@ class ProjectPersistenceServiceSpec extends FlatSpec with Matchers with MockitoS
         verify(project.lock, times(1)).lock()
         verify(project.lock, never()).release()
         runDbIOActions should contain theSameElementsInOrderAs  List(Tables.setupAction, Tables.versionQuery)
+        forDataSourceArgs.size shouldBe 1
+        val (ds, maxConn, exec, keepAlive) = forDataSourceArgs.head
+        ds shouldBe a [DriverDataSource]
+        val dds = ds.asInstanceOf[DriverDataSource]
+        dds.url shouldBe ""
+        dds.user shouldBe null
+        dds.password shouldBe null
+        dds.properties shouldBe null
+        dds.driverClassName shouldBe "org.sqlite.JDBC"
+        dds.classLoader shouldBe ClassLoaderUtil.defaultClassLoader
+        maxConn should contain 1
+        exec shouldBe a []
+        /*
+              name = "AsyncExecutor.trove",
+      minThreads = numWorkers,
+      maxThreads = numWorkers,
+      queueSize = numWorkers,
+      maxConnections = numWorkers,
+      keepAliveTime = 1.minute,
+      registerMbeans = false
+         */
+      /*
+    val dds = new DriverDataSource(
+      url = dbConfig.url,
+      user = dbConfig.user,
+      password = dbConfig.password,
+      properties = dbConfig.properties,
+      driverClassName = dbConfig.driverClassName,
+      classLoader = dbConfig.classLoader)
+
+        url: String,
+  user: String = null,
+  password: String = null,
+  properties: Properties = null,
+  driverClassName: String = "org.sqlite.JDBC",
+  classLoader: ClassLoader = ClassLoaderUtil.defaultClassLoader,
+  numThreads: Int = 1,
+  minThreads: Int = 1,
+  maxThreads: Int = 1,
+  queueSize: Int = 1,
+  maxConnections: Int = 1,
+  keepAliveTime: Duration = 1.minute,
+  registerMbeans: Boolean = false,
+  keepAliveConnection: Boolean = false
+ */
       case somethingElse =>
         fail(s"Wrong result when opening project: $somethingElse")
     }
@@ -196,7 +246,6 @@ class ProjectPersistenceServiceSpec extends FlatSpec with Matchers with MockitoS
   Persistence service
   ===================
 
-  it should "populate the version number table when creating a new project"
   it should "open the database with all the right settings"
   it should "set the current project upon successful project opening"
 
