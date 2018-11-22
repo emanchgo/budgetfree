@@ -1,3 +1,5 @@
+package trove.core
+
 /*
  *  # Trove
  *
@@ -21,6 +23,6 @@
  *  along with Trove.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package trove.models
-
-case class Project(name: String)
+trait Project {
+  def name: String
+}

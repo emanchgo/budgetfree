@@ -23,8 +23,9 @@
 
 package trove
 
+import trove.core.Project
 import trove.core.infrastructure.event.Event
 
 package object events {
-  case class ProjectChanged(projectName: Option[String]) extends Event
+  case class ProjectChanged(project: Option[Project]) extends Event
 }

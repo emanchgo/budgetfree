@@ -29,13 +29,13 @@ import java.util.Properties
 import grizzled.slf4j.Logging
 import slick.jdbc.DriverDataSource
 import slick.jdbc.SQLiteProfile.backend._
-import slick.util.{AsyncExecutor, ClassLoaderUtil}
+import slick.util.ClassLoaderUtil
 import trove.constants.ProjectsHomeDir
+import trove.core.Project
 import trove.core.infrastructure.persist.lock.{LockResourceReleaseErrorHandling, ProjectLock}
 import trove.core.infrastructure.persist.schema.Tables
 import trove.core.services.ProjectService
 import trove.exceptional.PersistenceError
-import trove.models.Project
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration._
@@ -61,7 +61,9 @@ private[persist] trait HasShutdownHook extends Logging { self : ProjectService =
 }
 
 private[persist] class ProjectImpl(val name: String, val lock: ProjectLock, val db: DatabaseDef)
-  extends Logging {
+  extends Project with Logging {
+
+  override def toString: String = s"Project($name)"
 
   def close(): Unit = {
     db.close()
@@ -99,7 +101,10 @@ private[persist] case class DatabaseConfig(
   keepAliveConnection: Boolean = false
 )
 
-private[persist] abstract class ProjectPersistenceServiceImpl(val projectsHomeDir: File) extends ProjectService with PersistenceOps with LockResourceReleaseErrorHandling
+private[persist] abstract class ProjectPersistenceServiceImpl(val projectsHomeDir: File)
+  extends ProjectService
+  with PersistenceOps
+  with LockResourceReleaseErrorHandling
   with Logging {
 
   require(projectsHomeDir.isDirectory)
@@ -108,16 +113,17 @@ private[persist] abstract class ProjectPersistenceServiceImpl(val projectsHomeDi
   import slick.jdbc.SQLiteProfile.backend._
 
   // The current active project
-  @volatile private[this] var currentProject: Option[ProjectImpl] = None
+  @volatile private[this] var _currentProject: Option[ProjectImpl] = None
+  def currentProject: Option[Project] = _currentProject
 
   override def listProjects: Try[Seq[String]] = Try {
     projectsHomeDir.listFiles.filter(_.isFile).map(_.getName).filterNot(_.endsWith(ProjectLock.LockfileSuffix)).filterNot(_.startsWith("."))
       .map(_.stripSuffix(DbFilenameSuffix)).sorted
   }
 
-  override def open(projectName: String): Try[Project] = initializeProject(projectName).map(p => Project(p.name))
+  override def open(projectName: String): Try[Project] = initializeProject(projectName)
 
-  private[persist] def initializeProject(projectName: String): Try[ProjectImpl] = currentProject.fold[Try[ProjectImpl]] {
+  private[persist] def initializeProject(projectName: String): Try[ProjectImpl] = _currentProject.fold[Try[ProjectImpl]] {
     logger.debug(s"Opening project: $projectName")
 
     val projectLock: ProjectLock = newProjectLock(projectsHomeDir, projectName)
@@ -135,14 +141,14 @@ private[persist] abstract class ProjectPersistenceServiceImpl(val projectsHomeDi
     val projectResult: Try[ProjectImpl] = openResult.flatMap {
       db =>
         val setupResult: Future[Unit] = if (create) {
-          runDbIOAction(Tables.setupAction)(db)
+          db.runDbAction(Tables.setupAction)
         }
         else {
           Future.successful(())
         }
 
         val versionCheckResult: Future[Try[ProjectImpl]] = setupResult.flatMap { _ =>
-          runDbIOAction(Tables.versionQuery)(db).map { rows =>
+          db.runDbAction(Tables.versionQuery).map { rows =>
             rows.toList match {
               case Tables.CurrentDbVersion :: Nil =>
                 val prj = new ProjectImpl(projectName, projectLock, db)
@@ -160,7 +166,7 @@ private[persist] abstract class ProjectPersistenceServiceImpl(val projectsHomeDi
 
     projectResult match {
       case Success(prj) =>
-        currentProject = Some(prj)
+        _currentProject = Some(prj)
         logger.info(s"Project opened: ${prj.name}")
       case Failure(e) =>
         logger.error("Error creating project", e)
@@ -183,20 +189,8 @@ private[persist] abstract class ProjectPersistenceServiceImpl(val projectsHomeDi
       driverClassName = dbConfig.driverClassName,
       classLoader = dbConfig.classLoader)
 
-    // N.B. We only need a single thread, so we pass 1 here.
-    val numWorkers = 1
-
-    val executor = AsyncExecutor(
-      name = "AsyncExecutor.trove",
-      minThreads = numWorkers,
-      maxThreads = numWorkers,
-      queueSize = numWorkers,
-      maxConnections = numWorkers,
-      keepAliveTime = 1.minute,
-      registerMbeans = false
-    )
-
-    forDataSource(ds = dds, maxConnections =  Some(numWorkers), executor = executor, keepAliveConnection = false)
+    // N.B. We only need a single thread/worker, so we pass 1 for the number of workers here.
+    forDataSource(ds = dds, numWorkers = 1)
   }.recoverWith {
     case NonFatal(e) =>
       PersistenceError("Unable to open database", e)
@@ -204,9 +198,9 @@ private[persist] abstract class ProjectPersistenceServiceImpl(val projectsHomeDi
 
 
   override def closeCurrentProject(): Try[Unit] =
-    currentProject.fold[Try[Unit]](Success({})) { project: ProjectImpl =>
+    _currentProject.fold[Try[Unit]](Success({})) { project: ProjectImpl =>
       Try(project.close()).map { _ =>
-        currentProject = None
+        _currentProject = None
       }.recoverWith {
         case NonFatal(e) =>
           logger.error("Error closing project")

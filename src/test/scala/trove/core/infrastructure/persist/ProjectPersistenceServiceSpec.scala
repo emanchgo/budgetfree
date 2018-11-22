@@ -31,7 +31,7 @@ import org.scalatest.mockito.MockitoSugar
 import org.scalatest.{FlatSpec, Matchers}
 import slick.dbio.{DBIOAction, NoStream}
 import slick.jdbc.DriverDataSource
-import slick.util.{AsyncExecutor, ClassLoaderUtil}
+import slick.util.ClassLoaderUtil
 import trove.constants.ProjectsHomeDir
 import trove.core.infrastructure.persist.lock.ProjectLock
 import trove.core.infrastructure.persist.schema.Tables
@@ -47,8 +47,9 @@ class ProjectPersistenceServiceSpec extends FlatSpec with Matchers with MockitoS
 
     val mockDbFile: File = mock[File]
     when(mockDbFile.exists()).thenReturn(true)
+    when(mockDbFile.getAbsolutePath).thenReturn("/foo/bar")
     var runDbIOActions: Seq[DBIOAction[_, NoStream, Nothing]] = Seq.empty
-    var forDataSourceArgs: Seq[(DataSource, Option[Int], AsyncExecutor, Boolean)] = Seq.empty
+    var forDataSourceArgs: Seq[(DataSource, Int)] = Seq.empty
 
     trait MockPersistence extends PersistenceOps {
       import slick.jdbc.SQLiteProfile.backend._
@@ -57,23 +58,19 @@ class ProjectPersistenceServiceSpec extends FlatSpec with Matchers with MockitoS
 
       override def newProjectLock(projectsHomeDir: File, projectName: String): ProjectLock = {
         val lock = mock[ProjectLock]
-        when(lock.lock()).thenReturn(Success())
+        when(lock.lock()).thenReturn(Success((): Unit))
         lock
       }
 
       override def createDbFile(directory: File, filename: String): File = mockDbFile
 
-      override def forDataSource(
-                                  ds: DataSource,
-                                  maxConnections: Option[Int],
-                                  executor: AsyncExecutor,
-                                  keepAliveConnection: Boolean): DatabaseDef = {
-        (ds, maxConnections, executor, keepAliveConnection) +: forDataSourceArgs
+      override def forDataSource(ds: DataSource, numWorkers: Int): DatabaseDef = {
+        forDataSourceArgs :+= (ds, numWorkers)
         mockDb
       }
 
-      override def runDbIOAction[R: TypeTag](a: DBIOAction[R,NoStream,Nothing])(db: DatabaseDef) : Future[R] = {
-        runDbIOActions = runDbIOActions :+ a
+      override def runDBIOAction[R: TypeTag](a: DBIOAction[R,NoStream,Nothing])(db: DatabaseDef) : Future[R] = {
+        runDbIOActions :+= a
         require(db == mockDb)
         typeOf[R] match {
           case r if r =:= typeOf[Unit] =>
@@ -158,7 +155,6 @@ class ProjectPersistenceServiceSpec extends FlatSpec with Matchers with MockitoS
         e shouldBe ex
       case somethingElse =>
         fail(s"Unexpected result: $somethingElse")
-
     }
   }
 
@@ -167,12 +163,24 @@ class ProjectPersistenceServiceSpec extends FlatSpec with Matchers with MockitoS
     projectNames.isSuccess shouldBe true
     val projectName: String = projectNames.get.head
     projectService.initializeProject(projectName) match {
-      case Success(project) =>
+      case result@Success(project) =>
         project.name shouldBe projectName
         project.db should not be null
         verify(project.lock, times(1)).lock()
         verify(project.lock, never()).release()
         runDbIOActions should contain theSameElementsAs List(Tables.versionQuery)
+        forDataSourceArgs.size shouldBe 1
+        val (ds, numWorkers) = forDataSourceArgs.head
+        ds shouldBe a [DriverDataSource]
+        val dds = ds.asInstanceOf[DriverDataSource]
+        dds.url shouldBe "jdbc:sqlite:/foo/bar"
+        dds.user shouldBe null
+        dds.password shouldBe null
+        dds.properties shouldBe null
+        dds.driverClassName shouldBe "org.sqlite.JDBC"
+        dds.classLoader shouldBe ClassLoaderUtil.defaultClassLoader
+        numWorkers shouldBe 1
+        projectService.currentProject shouldBe result.toOption
       case somethingElse =>
         fail(s"Wrong result when opening project: $somethingElse")
     }
@@ -186,68 +194,32 @@ class ProjectPersistenceServiceSpec extends FlatSpec with Matchers with MockitoS
     assume(!allProjectNames.contains(newProjectName)) // sanity check
     when(mockDbFile.exists()).thenReturn(false)
     projectService.initializeProject(newProjectName)  match {
-      case Success(project) =>
+      case result@Success(project) =>
         project.name shouldBe newProjectName
         project.db should not be null
         verify(project.lock, times(1)).lock()
         verify(project.lock, never()).release()
         runDbIOActions should contain theSameElementsInOrderAs  List(Tables.setupAction, Tables.versionQuery)
         forDataSourceArgs.size shouldBe 1
-        val (ds, maxConn, exec, keepAlive) = forDataSourceArgs.head
+        val (ds, numWorkers) = forDataSourceArgs.head
         ds shouldBe a [DriverDataSource]
         val dds = ds.asInstanceOf[DriverDataSource]
-        dds.url shouldBe ""
+        dds.url shouldBe "jdbc:sqlite:/foo/bar"
         dds.user shouldBe null
         dds.password shouldBe null
         dds.properties shouldBe null
         dds.driverClassName shouldBe "org.sqlite.JDBC"
         dds.classLoader shouldBe ClassLoaderUtil.defaultClassLoader
-        maxConn should contain 1
-        exec shouldBe a []
-        /*
-              name = "AsyncExecutor.trove",
-      minThreads = numWorkers,
-      maxThreads = numWorkers,
-      queueSize = numWorkers,
-      maxConnections = numWorkers,
-      keepAliveTime = 1.minute,
-      registerMbeans = false
-         */
-      /*
-    val dds = new DriverDataSource(
-      url = dbConfig.url,
-      user = dbConfig.user,
-      password = dbConfig.password,
-      properties = dbConfig.properties,
-      driverClassName = dbConfig.driverClassName,
-      classLoader = dbConfig.classLoader)
-
-        url: String,
-  user: String = null,
-  password: String = null,
-  properties: Properties = null,
-  driverClassName: String = "org.sqlite.JDBC",
-  classLoader: ClassLoader = ClassLoaderUtil.defaultClassLoader,
-  numThreads: Int = 1,
-  minThreads: Int = 1,
-  maxThreads: Int = 1,
-  queueSize: Int = 1,
-  maxConnections: Int = 1,
-  keepAliveTime: Duration = 1.minute,
-  registerMbeans: Boolean = false,
-  keepAliveConnection: Boolean = false
- */
+        numWorkers shouldBe 1
+        projectService.currentProject shouldBe result.toOption
       case somethingElse =>
         fail(s"Wrong result when opening project: $somethingElse")
     }
-
   }
+
   /*
   Persistence service
   ===================
-
-  it should "open the database with all the right settings"
-  it should "set the current project upon successful project opening"
 
   it should "fail with a SystemError if unable to obtain project lock"
   it should "fail with a PersistenceError and not lock a project if another project is already open"

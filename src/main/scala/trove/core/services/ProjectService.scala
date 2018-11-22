@@ -2,7 +2,7 @@ package trove.core.services
 
 import java.io.File
 
-import trove.models.Project
+import trove.core.Project
 
 import scala.util.Try
 
@@ -33,5 +33,6 @@ private[core] trait ProjectService {
   def projectsHomeDir: File
   def listProjects: Try[Seq[String]]
   def open(projectName: String): Try[Project]
+  def currentProject: Option[Project]
   def closeCurrentProject(): Try[Unit]
 }

@@ -29,6 +29,8 @@ import javax.sql.DataSource
 import slick.dbio.{DBIOAction, NoStream}
 import slick.jdbc.SQLiteProfile.backend._
 import slick.util.AsyncExecutor
+
+import scala.concurrent.duration._
 import trove.core.infrastructure.persist.lock.ProjectLock
 
 import scala.concurrent.Future
@@ -38,9 +40,14 @@ private[persist] trait PersistenceOps {
 
   def newProjectLock(projectsHomeDir: File, projectName: String): ProjectLock
   def createDbFile(directory: File, filename: String): File
-  def forDataSource(ds: DataSource, maxConnections: Option[Int], executor: AsyncExecutor, keepAliveConnection: Boolean): DatabaseDef
+  def forDataSource(ds: DataSource, numWorkers: Int): DatabaseDef
 
-  def runDbIOAction[R: TypeTag](a: DBIOAction[R,NoStream,Nothing])(db: DatabaseDef) : Future[R]
+  // Don't call this directly; use the implicit conversion to RunDbAction
+  def runDBIOAction[R: TypeTag](a: DBIOAction[R,NoStream,Nothing])(db: DatabaseDef) : Future[R]
+
+  final implicit class RunDbAction(db: DatabaseDef) {
+    def runDbAction[R: TypeTag](action: DBIOAction[R,NoStream,Nothing]): Future[R] = runDBIOAction(action)(db)
+  }
 }
 
 private[persist] trait LivePersistence extends PersistenceOps {
@@ -49,17 +56,23 @@ private[persist] trait LivePersistence extends PersistenceOps {
 
   override def createDbFile(directory: File, filename: String): File = new File(directory, filename)
 
-  override def forDataSource(ds: DataSource, maxConnections: Option[Int], executor: AsyncExecutor, keepAliveConnection: Boolean):
-    DatabaseDef = {
+  override def forDataSource(ds: DataSource, numWorkers: Int): DatabaseDef = {
+
+    val executor = AsyncExecutor(
+      name = "AsyncExecutor.trove",
+      minThreads = numWorkers,
+      maxThreads = numWorkers,
+      queueSize = numWorkers,
+      maxConnections = numWorkers,
+      keepAliveTime = 1.minute,
+      registerMbeans = false
+    )
 
     Database.forDataSource(
       ds = ds,
-      maxConnections = maxConnections,
-      executor = executor,
-      keepAliveConnection = false
-    )
+      maxConnections = Some(numWorkers),
+      executor = executor)
   }
 
-  override def runDbIOAction[R: TypeTag](a: DBIOAction[R,NoStream,Nothing])(db: DatabaseDef): Future[R] = db.run(a)
-
+  override def runDBIOAction[R: TypeTag](a: DBIOAction[R,NoStream,Nothing])(db: DatabaseDef): Future[R] = db.run(a)
 }

@@ -50,10 +50,10 @@ object Trove extends Logging {
 
   def apply(projectName: String): Try[Trove] =
     if (projectName.matches(ValidProjectNameChars)) {
-      projectService.open(projectName).map { _ =>
+      projectService.open(projectName).map { project =>
         logger.debug(s"Database for project $projectName successfully opened.")
-        val result = new Trove(projectName)
-        eventService.publish(ProjectChanged(Some(projectName)))
+        val result = new Trove(project)
+        eventService.publish(ProjectChanged(Some(project)))
         result
       }.recoverWith {
         case NonFatal(e) =>
@@ -76,6 +76,6 @@ object Trove extends Logging {
   }
 }
 
-final class Trove private(val projectName: String) {
-  override def toString: String = projectName
+final class Trove private(val project: Project) {
+  override def toString: String = s"Trove($project)"
 }
