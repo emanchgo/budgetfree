@@ -24,19 +24,18 @@
 
 package trove.ui
 
-import trove.core.Trove
-import trove.ui.ButtonTypes.{No, Yes}
-import trove.ui.fxext.{AppModalAlert, Menu, MenuItem}
-
 import scalafx.Includes._
 import scalafx.geometry.Insets
-import scalafx.geometry.Orientation.Vertical
+import scalafx.geometry.Orientation.Horizontal
 import scalafx.scene.Scene
 import scalafx.scene.control.Alert.AlertType
 import scalafx.scene.control._
 import scalafx.scene.image.ImageView
 import scalafx.scene.input.KeyCode
-import scalafx.scene.layout.{BorderPane, VBox}
+import scalafx.scene.layout.BorderPane
+import trove.core.Trove
+import trove.ui.ButtonTypes.{No, Yes}
+import trove.ui.fxext.{AppModalAlert, Menu, MenuItem}
 
 private[ui] class ActiveProjectScene(projectName: String) extends Scene {
 
@@ -51,40 +50,23 @@ private[ui] class ActiveProjectScene(projectName: String) extends Scene {
     prefWidth = 300
   }
 
-  private[this] val transactionPane = new BorderPane {
+  private[this] val ledgerPane = new BorderPane {
     padding = Insets(20, 10, 10, 10)
-    center = Label("Transactions Pane")
-    top = Label("Transactions Button Bar")
+    center = Label("Account Ledger Pane")
+    top = Label("Account Ledger Button Bar")
     prefWidth = 700
     minWidth = 700
     //        center = AuctionItemUI.tableView
     //        top = AuctionItemUI.header
   }
 
-  private[this] val mainPane = new BorderPane {
-    center = new SplitPane {
-      //dividerPositions_=(0)
-      dividerPositions = 0
-      items ++= Seq(accountPane, transactionPane)
-    }
-    prefHeight = 500
-    minHeight = 500
-    top = new VBox
-  }
-
-  private[this] val transactionDetailPane = new BorderPane {
-    center = Label("Transaction Detail Pane")
-    top = Label("Transaction Detail Button Bar")
-    prefHeight = 100
-    minHeight = 100
-  }
 
   private[this] val trackingPane =  new BorderPane {
     center = new SplitPane {
-      orientation = Vertical
+      orientation = Horizontal
       dividerPositions = 0
       //dividerPositions_=(0)
-      items ++= Seq(mainPane, transactionDetailPane)
+      items ++= Seq(accountPane, ledgerPane)
     }
   }
 
@@ -92,14 +74,14 @@ private[ui] class ActiveProjectScene(projectName: String) extends Scene {
     tabs = Seq(
       new Tab {
         text = "Home"
-        tooltip = "High level view"
+        tooltip = "Overall view"
         closable = false
         tabMaxHeight = ActiveProjectTabHeight
         graphic = new ImageView(getImage("pie-chart-40.png", ActiveProjectTabImageSize))
       },
       new Tab {
         text = "Tracking"
-        tooltip = "Track individual transactions"
+        tooltip = "Track individual accounts and transactions"
         closable = false
         content = trackingPane
         tabMaxHeight = ActiveProjectTabHeight

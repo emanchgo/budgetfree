@@ -24,7 +24,6 @@
 package trove.ui
 
 import scalafx.Includes._
-import scalafx.application.Platform
 import scalafx.event.ActionEvent
 import scalafx.scene.control.Alert.AlertType
 import scalafx.scene.control._
@@ -105,9 +104,9 @@ private[ui] class HelpAboutDialog extends AppModalAlert(AlertType.Information) {
 
   // This is a Linux workaround. The alert doesn't display correctly about 1/3 of the time (anecdotal observance).
   // This is an attempt to make the alert display correctly "most of the time."
-  Platform.runLater {
-    Thread.sleep(500)
-    dialogPane().requestLayout()
-    dialogPane().requestFocus()
-  }
+//  Platform.runLater {
+//    Thread.sleep(500)
+//    dialogPane().requestLayout()
+//    dialogPane().requestFocus()
+//  }
 }

@@ -174,8 +174,8 @@ private[persist] abstract class ProjectPersistenceServiceImpl(val projectsHomeDi
     }
 
     projectResult
-
   } (prj =>
+    // Second arg list for the fold. No project.
     PersistenceError(s"Unable to open project - ${prj.name} is currently open")
   )
 

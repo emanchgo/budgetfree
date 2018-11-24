@@ -35,6 +35,7 @@ import slick.util.ClassLoaderUtil
 import trove.constants.ProjectsHomeDir
 import trove.core.infrastructure.persist.lock.ProjectLock
 import trove.core.infrastructure.persist.schema.Tables
+import trove.exceptional.{SystemError, SystemException}
 
 import scala.concurrent.Future
 import scala.reflect.runtime.universe._
@@ -44,6 +45,7 @@ class ProjectPersistenceServiceSpec extends FlatSpec with Matchers with MockitoS
   import ProjectPersistenceService._
 
   trait ProjectDirFixture {
+    import slick.jdbc.SQLiteProfile.backend._
 
     val mockDbFile: File = mock[File]
     when(mockDbFile.exists()).thenReturn(true)
@@ -51,18 +53,19 @@ class ProjectPersistenceServiceSpec extends FlatSpec with Matchers with MockitoS
     var runDbIOActions: Seq[DBIOAction[_, NoStream, Nothing]] = Seq.empty
     var forDataSourceArgs: Seq[(DataSource, Int)] = Seq.empty
 
+    val mockLock: ProjectLock = mock[ProjectLock]
+    when(mockLock.lock()).thenReturn(Success((): Unit))
+
+    val mockDb = mock[DatabaseDef]
+
     trait MockPersistence extends PersistenceOps {
-      import slick.jdbc.SQLiteProfile.backend._
 
-      val mockDb = mock[DatabaseDef]
 
-      override def newProjectLock(projectsHomeDir: File, projectName: String): ProjectLock = {
-        val lock = mock[ProjectLock]
-        when(lock.lock()).thenReturn(Success((): Unit))
-        lock
-      }
+      override def newProjectLock(projectsHomeDir: File, projectName: String): ProjectLock =
+        mockLock
 
-      override def createDbFile(directory: File, filename: String): File = mockDbFile
+      override def createDbFile(directory: File, filename: String): File =
+        mockDbFile
 
       override def forDataSource(ds: DataSource, numWorkers: Int): DatabaseDef = {
         forDataSourceArgs :+= (ds, numWorkers)
@@ -166,6 +169,7 @@ class ProjectPersistenceServiceSpec extends FlatSpec with Matchers with MockitoS
       case result@Success(project) =>
         project.name shouldBe projectName
         project.db should not be null
+        project.lock shouldBe mockLock
         verify(project.lock, times(1)).lock()
         verify(project.lock, never()).release()
         runDbIOActions should contain theSameElementsAs List(Tables.versionQuery)
@@ -181,6 +185,7 @@ class ProjectPersistenceServiceSpec extends FlatSpec with Matchers with MockitoS
         dds.classLoader shouldBe ClassLoaderUtil.defaultClassLoader
         numWorkers shouldBe 1
         projectService.currentProject shouldBe result.toOption
+        verifyNoMoreInteractions(mockDb, mockLock)
       case somethingElse =>
         fail(s"Wrong result when opening project: $somethingElse")
     }
@@ -197,6 +202,7 @@ class ProjectPersistenceServiceSpec extends FlatSpec with Matchers with MockitoS
       case result@Success(project) =>
         project.name shouldBe newProjectName
         project.db should not be null
+        project.lock shouldBe mockLock
         verify(project.lock, times(1)).lock()
         verify(project.lock, never()).release()
         runDbIOActions should contain theSameElementsInOrderAs  List(Tables.setupAction, Tables.versionQuery)
@@ -212,6 +218,27 @@ class ProjectPersistenceServiceSpec extends FlatSpec with Matchers with MockitoS
         dds.classLoader shouldBe ClassLoaderUtil.defaultClassLoader
         numWorkers shouldBe 1
         projectService.currentProject shouldBe result.toOption
+        verifyNoMoreInteractions(mockDb, mockLock)
+      case somethingElse =>
+        fail(s"Wrong result when opening project: $somethingElse")
+    }
+  }
+
+  it should "fail with a SystemError if unable to obtain a project lock" in new NormalProjectsFixture {
+    val projectNames: Try[Seq[String]] = projectService.listProjects
+    projectNames.isSuccess shouldBe true
+    val projectName: String = projectNames.get.head
+    val ise = new IllegalStateException("lock error")
+    when(mockLock.lock()).thenReturn(SystemError("doom", ise))
+    projectService.initializeProject(projectName) match {
+      case Failure(ex: SystemException) =>
+        ex.cause shouldBe Some(ise)
+        verify(mockLock, times(1)).lock()
+        verify(mockLock, times(1)).release()
+        verifyNoMoreInteractions(mockDb, mockLock)
+        runDbIOActions shouldBe empty
+        forDataSourceArgs shouldBe empty
+        projectService.currentProject shouldBe None
       case somethingElse =>
         fail(s"Wrong result when opening project: $somethingElse")
     }
@@ -221,7 +248,6 @@ class ProjectPersistenceServiceSpec extends FlatSpec with Matchers with MockitoS
   Persistence service
   ===================
 
-  it should "fail with a SystemError if unable to obtain project lock"
   it should "fail with a PersistenceError and not lock a project if another project is already open"
   it should "fail with a PersistenceError and clean up project lock if unable to open database"
   it should "fail with a PersistenceError if the wrong database version exists and clean up the project lock"
@@ -241,4 +267,14 @@ class ProjectPersistenceServiceSpec extends FlatSpec with Matchers with MockitoS
 
   "open" should return a project object
   */
+
+/*
+  Test all these
+  def projectsHomeDir: File
+  def listProjects: Try[Seq[String]]
+  def open(projectName: String): Try[Project]
+  def currentProject: Option[Project]
+  def closeCurrentProject(): Try[Unit]
+
+ */
 }
