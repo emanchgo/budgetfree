@@ -35,7 +35,7 @@ import trove.core.Project
 import trove.core.infrastructure.persist.lock.{LockResourceReleaseErrorHandling, ProjectLock}
 import trove.core.infrastructure.persist.schema.Tables
 import trove.core.services.ProjectService
-import trove.exceptional.PersistenceError
+import trove.exceptional.{PersistenceError, PersistenceException, SystemException}
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration._
@@ -169,11 +169,18 @@ private[persist] abstract class ProjectPersistenceServiceImpl(val projectsHomeDi
         _currentProject = Some(prj)
         logger.info(s"Project opened: ${prj.name}")
       case Failure(e) =>
-        logger.error("Error creating project", e)
+        logger.error("Error opening project", e)
         projectLock.release()
     }
 
-    projectResult
+    projectResult.recoverWith {
+      case pe@PersistenceException(_, _) =>
+        Failure(pe)
+      case se@SystemException(_,_) =>
+        Failure(se)
+      case NonFatal(e) =>
+        PersistenceError("Error opening project", e)
+    }
   } (prj =>
     // Second arg list for the fold. No project.
     PersistenceError(s"Unable to open project - ${prj.name} is currently open")

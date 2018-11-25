@@ -24,6 +24,7 @@
 package trove.core.infrastructure.persist
 
 import java.io.File
+import java.sql.SQLException
 
 import javax.sql.DataSource
 import org.mockito.Mockito._
@@ -35,7 +36,7 @@ import slick.util.ClassLoaderUtil
 import trove.constants.ProjectsHomeDir
 import trove.core.infrastructure.persist.lock.ProjectLock
 import trove.core.infrastructure.persist.schema.Tables
-import trove.exceptional.{SystemError, SystemException}
+import trove.exceptional.{PersistenceException, SystemError, SystemException}
 
 import scala.concurrent.Future
 import scala.reflect.runtime.universe._
@@ -58,6 +59,14 @@ class ProjectPersistenceServiceSpec extends FlatSpec with Matchers with MockitoS
 
     val mockDb = mock[DatabaseDef]
 
+    var mockDbError: Boolean = false
+    val SqlException = new SQLException("Mock DB Error")
+
+    var dbActionCount = 0
+    var dbActionFailOn: Int = -1
+
+    var dbVersionQueryResult: Seq[DBVersion] = Seq(Tables.CurrentDbVersion)
+
     trait MockPersistence extends PersistenceOps {
 
 
@@ -69,19 +78,25 @@ class ProjectPersistenceServiceSpec extends FlatSpec with Matchers with MockitoS
 
       override def forDataSource(ds: DataSource, numWorkers: Int): DatabaseDef = {
         forDataSourceArgs :+= (ds, numWorkers)
+        if(mockDbError) throw SqlException
         mockDb
       }
 
       override def runDBIOAction[R: TypeTag](a: DBIOAction[R,NoStream,Nothing])(db: DatabaseDef) : Future[R] = {
         runDbIOActions :+= a
-        require(db == mockDb)
-        typeOf[R] match {
-          case r if r =:= typeOf[Unit] =>
-            Future.successful({}).asInstanceOf[Future[R]]
-          case r if r =:= typeOf[Seq[Tables.Version#TableElementType]] =>
-            Future.successful(Seq(Tables.CurrentDbVersion)).asInstanceOf[Future[R]]
-          case _ =>
-            Future.failed[R](new RuntimeException(s"Unknown type: ${typeOf[R]}"))
+        assume(db == mockDb)
+        dbActionCount += 1
+        if(dbActionFailOn == dbActionCount)
+          Future.failed[R](new Exception(s"failed as expected: dbActionFailOn: $dbActionFailOn"))
+        else {
+          typeOf[R] match {
+            case r if r =:= typeOf[Unit] =>
+              Future.successful({}).asInstanceOf[Future[R]]
+            case r if r =:= typeOf[Seq[Tables.Version#TableElementType]] =>
+              Future.successful(dbVersionQueryResult).asInstanceOf[Future[R]]
+            case _ =>
+              Future.failed[R](new RuntimeException(s"Unknown type: ${typeOf[R]}"))
+          }
         }
       }
     }
@@ -173,7 +188,7 @@ class ProjectPersistenceServiceSpec extends FlatSpec with Matchers with MockitoS
         verify(project.lock, times(1)).lock()
         verify(project.lock, never()).release()
         runDbIOActions should contain theSameElementsAs List(Tables.versionQuery)
-        forDataSourceArgs.size shouldBe 1
+        forDataSourceArgs should have size 1
         val (ds, numWorkers) = forDataSourceArgs.head
         ds shouldBe a [DriverDataSource]
         val dds = ds.asInstanceOf[DriverDataSource]
@@ -206,7 +221,7 @@ class ProjectPersistenceServiceSpec extends FlatSpec with Matchers with MockitoS
         verify(project.lock, times(1)).lock()
         verify(project.lock, never()).release()
         runDbIOActions should contain theSameElementsInOrderAs  List(Tables.setupAction, Tables.versionQuery)
-        forDataSourceArgs.size shouldBe 1
+        forDataSourceArgs should have size 1
         val (ds, numWorkers) = forDataSourceArgs.head
         ds shouldBe a [DriverDataSource]
         val dds = ds.asInstanceOf[DriverDataSource]
@@ -244,14 +259,188 @@ class ProjectPersistenceServiceSpec extends FlatSpec with Matchers with MockitoS
     }
   }
 
+  it should "return a PersistenceError if a project is already open" in new NormalProjectsFixture {
+    val projectNames: Try[Seq[String]] = projectService.listProjects
+    projectNames.isSuccess shouldBe true
+    val projectName: String = projectNames.get.head
+    projectService.initializeProject(projectName) match {
+      case Success(_) =>
+
+        verify(mockLock, times(1)).lock()
+        verify(mockLock, never()).release()
+
+        val anotherProj = "foobarbaz"
+        assume(!projectNames.get.contains(anotherProj))
+        when(mockDbFile.exists()).thenReturn(false)
+
+        projectService.initializeProject(anotherProj) match {
+          case Failure(_: PersistenceException) =>
+            // ok
+          case somethingUnexpected =>
+            fail(s"Wrong result when opening second project: $somethingUnexpected")
+        }
+
+
+        verifyNoMoreInteractions(mockDb, mockLock)
+      case somethingElse =>
+        fail(s"Wrong result when opening first project: $somethingElse")
+    }
+  }
+
+  it should "fail with a PersistenceError and clean up project lock if unable to open database" in new NormalProjectsFixture {
+    val projectNames: Try[Seq[String]] = projectService.listProjects
+    projectNames.isSuccess shouldBe true
+    val projectName: String = projectNames.get.head
+    mockDbError = true // turn this on to throw exception when opening db
+    projectService.initializeProject(projectName) match {
+      case Failure(e: PersistenceException) =>
+        verify(mockLock, times(1)).lock()
+        verify(mockLock, times(1)).release()
+        e.cause shouldBe Some(SqlException)
+        verifyNoMoreInteractions(mockLock, mockDb)
+      case somethingElse =>
+        fail(s"Wrong result when opening project: $somethingElse")
+    }
+  }
+
+  it should "fail with a PersistenceError and clean up the project lock if there is a problem performing the DB version query for an existing project" in new NormalProjectsFixture {
+    val projectNames: Try[Seq[String]] = projectService.listProjects
+    val projectName: String = projectNames.get.head
+    dbActionFailOn = 1
+    projectService.initializeProject(projectName) match {
+      case Failure(PersistenceException(_, cause)) =>
+        verify(mockLock, times(1)).lock()
+        verify(mockLock, times(1)).release()
+        cause should not be empty
+        cause.get.getMessage should endWith (s": $dbActionFailOn")
+        forDataSourceArgs should have size 1
+        val (ds, numWorkers) = forDataSourceArgs.head
+        ds shouldBe a [DriverDataSource]
+        numWorkers shouldBe 1
+        runDbIOActions should have size 1
+        runDbIOActions should contain theSameElementsAs List(Tables.versionQuery)
+        verifyNoMoreInteractions(mockLock, mockDb)
+      case somethingElse =>
+        fail(s"Wrong result when opening project: $somethingElse")
+    }
+  }
+
+
+  it should "fail with a PersistenceError and clean up the project lock if there is a problem performing the DB version query for a new project" in new NormalProjectsFixture {
+    val projectNames: Try[Seq[String]] = projectService.listProjects
+
+    val anotherProj = "foobarbaz"
+    assume(!projectNames.get.contains(anotherProj))
+    when(mockDbFile.exists()).thenReturn(false)
+
+    dbActionFailOn = 2
+    projectService.initializeProject(anotherProj) match {
+      case Failure(PersistenceException(_, cause)) =>
+        verify(mockLock, times(1)).lock()
+        verify(mockLock, times(1)).release()
+        cause should not be empty
+        cause.get.getMessage should endWith (s": $dbActionFailOn")
+
+        forDataSourceArgs should have size 1
+        val (ds, numWorkers) = forDataSourceArgs.head
+        ds shouldBe a [DriverDataSource]
+        numWorkers shouldBe 1
+
+        runDbIOActions should have size 2
+        runDbIOActions should contain theSameElementsAs List(Tables.setupAction, Tables.versionQuery)
+        verifyNoMoreInteractions(mockLock, mockDb)
+      case somethingElse =>
+        fail(s"Wrong result when opening project: $somethingElse")
+    }
+  }
+
+  it should "fail with a PersistenceError and clean up the project lock if there is a problem setting up the tables for a new project" in new NormalProjectsFixture {
+    val projectNames: Try[Seq[String]] = projectService.listProjects
+
+    val anotherProj = "foobarbaz"
+    assume(!projectNames.get.contains(anotherProj))
+    when(mockDbFile.exists()).thenReturn(false)
+
+    dbActionFailOn = 1
+    projectService.initializeProject(anotherProj) match {
+      case Failure(PersistenceException(_, cause)) =>
+        verify(mockLock, times(1)).lock()
+        verify(mockLock, times(1)).release()
+        cause should not be empty
+        cause.get.getMessage should endWith (s": $dbActionFailOn")
+
+        forDataSourceArgs should have size 1
+        val (ds, numWorkers) = forDataSourceArgs.head
+        ds shouldBe a [DriverDataSource]
+        numWorkers shouldBe 1
+
+        runDbIOActions should have size 1
+        runDbIOActions should contain theSameElementsAs List(Tables.setupAction)
+        verifyNoMoreInteractions(mockLock, mockDb)
+
+      case somethingElse =>
+        fail(s"Wrong result when opening project: $somethingElse")
+    }
+  }
+
+  it should "fail with a PersistenceError and clean up the project lock if the wrong database version exists" in new NormalProjectsFixture {
+    val projectNames: Try[Seq[String]] = projectService.listProjects
+    val projectName: String = projectNames.get.head
+
+    val newDbVersion: Long = dbVersionQueryResult.head.id -1
+    dbVersionQueryResult = Seq(dbVersionQueryResult.head.copy(id = newDbVersion))
+
+    projectService.initializeProject(projectName) match {
+      case Failure(PersistenceException(message, cause)) =>
+        verify(mockLock, times(1)).lock()
+        verify(mockLock, times(1)).release()
+
+        forDataSourceArgs should have size 1
+        val (ds, numWorkers) = forDataSourceArgs.head
+        ds shouldBe a [DriverDataSource]
+        numWorkers shouldBe 1
+
+        runDbIOActions should have size 1
+        runDbIOActions should contain theSameElementsAs List(Tables.versionQuery)
+        verifyNoMoreInteractions(mockLock, mockDb)
+
+        message should endWith (newDbVersion.toString)
+      case somethingElse =>
+        fail(s"Wrong result when opening project: $somethingElse")
+    }
+  }
+
+  it should "fail with a PersistenceError and clean up the project lock if there are too many rows in the database version table" in new NormalProjectsFixture {
+    val projectNames: Try[Seq[String]] = projectService.listProjects
+    val projectName: String = projectNames.get.head
+
+    val newDbVersion: Long = dbVersionQueryResult.head.id -1
+    dbVersionQueryResult = Seq(dbVersionQueryResult.head, dbVersionQueryResult.head.copy(id = newDbVersion))
+
+    projectService.initializeProject(projectName) match {
+      case Failure(PersistenceException(message, cause)) =>
+        verify(mockLock, times(1)).lock()
+        verify(mockLock, times(1)).release()
+
+        forDataSourceArgs should have size 1
+        val (ds, numWorkers) = forDataSourceArgs.head
+        ds shouldBe a [DriverDataSource]
+        numWorkers shouldBe 1
+
+        runDbIOActions should have size 1
+        runDbIOActions should contain theSameElementsAs List(Tables.versionQuery)
+        verifyNoMoreInteractions(mockLock, mockDb)
+
+        message should endWith (s"found ${dbVersionQueryResult.size} rows")
+      case somethingElse =>
+        fail(s"Wrong result when opening project: $somethingElse")
+    }
+
+  }
   /*
   Persistence service
   ===================
 
-  it should "fail with a PersistenceError and not lock a project if another project is already open"
-  it should "fail with a PersistenceError and clean up project lock if unable to open database"
-  it should "fail with a PersistenceError if the wrong database version exists and clean up the project lock"
-  it should "fail with a PersistenceError if there are too many rows in the database version table and clean up the project lock"
 
   "closeCurrentProject" should "clear the current project upon successful project closing"
   it should "return success if there is no open project"
