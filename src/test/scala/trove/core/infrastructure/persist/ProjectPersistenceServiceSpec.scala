@@ -140,7 +140,7 @@ class ProjectPersistenceServiceSpec extends FlatSpec with Matchers with MockitoS
     Runtime.getRuntime.removeShutdownHook(shutdownHook) shouldBe true
   }
 
-  "listProjectNames" should "return nothing if the project directory is empty" in new ProjectDirFixture {
+  "listProjects" should "return nothing if the project directory is empty" in new ProjectDirFixture {
     projectService.listProjects shouldBe Success(Seq.empty)
   }
 
@@ -437,6 +437,75 @@ class ProjectPersistenceServiceSpec extends FlatSpec with Matchers with MockitoS
     }
 
   }
+
+  "Public open method" should "open an existing project" in new NormalProjectsFixture {
+    val projectNames: Try[Seq[String]] = projectService.listProjects
+    projectNames.isSuccess shouldBe true
+    val projectName: String = projectNames.get.head
+    projectService.open(projectName) match {
+      case result@Success(prj) =>
+        prj.name shouldBe projectName
+        prj shouldBe a [ProjectImpl]
+        val project = prj.asInstanceOf[ProjectImpl]
+        project.db should not be null
+        project.lock shouldBe mockLock
+        verify(project.lock, times(1)).lock()
+        verify(project.lock, never()).release()
+        runDbIOActions should contain theSameElementsAs List(Tables.versionQuery)
+        forDataSourceArgs should have size 1
+        val (ds, numWorkers) = forDataSourceArgs.head
+        ds shouldBe a [DriverDataSource]
+        val dds = ds.asInstanceOf[DriverDataSource]
+        dds.url shouldBe "jdbc:sqlite:/foo/bar"
+        dds.user shouldBe null
+        dds.password shouldBe null
+        dds.properties shouldBe null
+        dds.driverClassName shouldBe "org.sqlite.JDBC"
+        dds.classLoader shouldBe ClassLoaderUtil.defaultClassLoader
+        numWorkers shouldBe 1
+        projectService.currentProject shouldBe result.toOption
+        verifyNoMoreInteractions(mockDb, mockLock)
+      case somethingElse =>
+        fail(s"Wrong result when opening project: $somethingElse")
+    }
+
+  }
+
+  it should "create a new project performing the appropriate operations" in new NormalProjectsFixture {
+    val projectNames: Try[Seq[String]] = projectService.listProjects
+    projectNames.isSuccess shouldBe true
+    val allProjectNames: Seq[String] = projectNames.get
+    val newProjectName = "foo"
+    assume(!allProjectNames.contains(newProjectName)) // sanity check
+    when(mockDbFile.exists()).thenReturn(false)
+    projectService.open(newProjectName)  match {
+      case result@Success(prj) =>
+        prj shouldBe a [ProjectImpl]
+        val project = prj.asInstanceOf[ProjectImpl]
+        prj.name shouldBe newProjectName
+        project.db should not be null
+        project.lock shouldBe mockLock
+        verify(project.lock, times(1)).lock()
+        verify(project.lock, never()).release()
+        runDbIOActions should contain theSameElementsInOrderAs  List(Tables.setupAction, Tables.versionQuery)
+        forDataSourceArgs should have size 1
+        val (ds, numWorkers) = forDataSourceArgs.head
+        ds shouldBe a [DriverDataSource]
+        val dds = ds.asInstanceOf[DriverDataSource]
+        dds.url shouldBe "jdbc:sqlite:/foo/bar"
+        dds.user shouldBe null
+        dds.password shouldBe null
+        dds.properties shouldBe null
+        dds.driverClassName shouldBe "org.sqlite.JDBC"
+        dds.classLoader shouldBe ClassLoaderUtil.defaultClassLoader
+        numWorkers shouldBe 1
+        projectService.currentProject shouldBe result.toOption
+        verifyNoMoreInteractions(mockDb, mockLock)
+      case somethingElse =>
+        fail(s"Wrong result when opening project: $somethingElse")
+    }
+  }
+
   /*
   Persistence service
   ===================
@@ -454,15 +523,11 @@ class ProjectPersistenceServiceSpec extends FlatSpec with Matchers with MockitoS
   "shutdown hook" should "close the database and release the project lock if invoked"
   it should "not try to remove itself from the jvm shutdown hooks"
 
-  "open" should return a project object
   */
 
 /*
   Test all these
-  def projectsHomeDir: File
-  def listProjects: Try[Seq[String]]
   def open(projectName: String): Try[Project]
-  def currentProject: Option[Project]
   def closeCurrentProject(): Try[Unit]
 
  */
