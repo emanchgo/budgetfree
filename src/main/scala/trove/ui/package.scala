@@ -29,7 +29,7 @@ import scalafx.scene.control.{ButtonBar, ButtonType, Label}
 import scalafx.scene.image.Image
 import scalafx.scene.paint.Color
 import trove.constants._
-import trove.exceptional.{FailQuietly, ValidationException}
+import trove.exceptional.{FailQuietly, ValidationError}
 import trove.ui.fxext.AppModalAlert
 
 import scala.reflect.ClassTag
@@ -84,7 +84,7 @@ package object ui extends Logging {
     case result@Failure(ex) =>
       logger.error("Intercepted error.", ex)
       val msg: String = ex match {
-        case ValidationException(message, _, errors) => s"$message\n\n" + errors.mkString("\n")
+        case ValidationError(message, _, errors) => s"$message\n\n" + errors.mkString("\n")
         case NonFatal(e) => messageOf(e)
         case e =>
           s"Fatal error - ${messageOf(e)}"

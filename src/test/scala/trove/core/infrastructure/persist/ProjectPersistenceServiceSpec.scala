@@ -36,7 +36,7 @@ import slick.util.ClassLoaderUtil
 import trove.constants.ProjectsHomeDir
 import trove.core.infrastructure.persist.lock.ProjectLock
 import trove.core.infrastructure.persist.schema.Tables
-import trove.exceptional.{PersistenceException, SystemError, SystemException}
+import trove.exceptional.{PersistenceError, PersistenceException, SystemError}
 
 import scala.concurrent.Future
 import scala.reflect.runtime.universe._
@@ -104,7 +104,7 @@ class ProjectPersistenceServiceSpec extends FlatSpec with Matchers with MockitoS
     val tempDir: File = mock[File]
     when(tempDir.isDirectory).thenReturn(true)
     when(tempDir.listFiles()).thenReturn(Array.empty[File])
-    val projectService: ProjectPersistenceServiceImpl = new ProjectPersistenceServiceImpl(tempDir) with MockPersistence
+    val projectService: ProjectPersistenceServiceImpl = new ProjectPersistenceServiceImpl(tempDir) with MockPersistence with HasShutdownHook
 
     def mockFile(name: String, directory: Boolean = false): File = {
       require(name != null)
@@ -246,8 +246,8 @@ class ProjectPersistenceServiceSpec extends FlatSpec with Matchers with MockitoS
     val ise = new IllegalStateException("lock error")
     when(mockLock.lock()).thenReturn(SystemError("doom", ise))
     projectService.initializeProject(projectName) match {
-      case Failure(ex: SystemException) =>
-        ex.cause shouldBe Some(ise)
+      case SystemError(_, cause) =>
+        cause shouldBe Some(ise)
         verify(mockLock, times(1)).lock()
         verify(mockLock, times(1)).release()
         verifyNoMoreInteractions(mockDb, mockLock)
@@ -308,7 +308,7 @@ class ProjectPersistenceServiceSpec extends FlatSpec with Matchers with MockitoS
     val projectName: String = projectNames.get.head
     dbActionFailOn = 1
     projectService.initializeProject(projectName) match {
-      case Failure(PersistenceException(_, cause)) =>
+      case PersistenceError(_, cause) =>
         verify(mockLock, times(1)).lock()
         verify(mockLock, times(1)).release()
         cause should not be empty
@@ -335,7 +335,7 @@ class ProjectPersistenceServiceSpec extends FlatSpec with Matchers with MockitoS
 
     dbActionFailOn = 2
     projectService.initializeProject(anotherProj) match {
-      case Failure(PersistenceException(_, cause)) =>
+      case PersistenceError(_, cause) =>
         verify(mockLock, times(1)).lock()
         verify(mockLock, times(1)).release()
         cause should not be empty
@@ -363,7 +363,7 @@ class ProjectPersistenceServiceSpec extends FlatSpec with Matchers with MockitoS
 
     dbActionFailOn = 1
     projectService.initializeProject(anotherProj) match {
-      case Failure(PersistenceException(_, cause)) =>
+      case PersistenceError(_, cause) =>
         verify(mockLock, times(1)).lock()
         verify(mockLock, times(1)).release()
         cause should not be empty
@@ -391,7 +391,7 @@ class ProjectPersistenceServiceSpec extends FlatSpec with Matchers with MockitoS
     dbVersionQueryResult = Seq(dbVersionQueryResult.head.copy(id = newDbVersion))
 
     projectService.initializeProject(projectName) match {
-      case Failure(PersistenceException(message, cause)) =>
+      case PersistenceError(message, _) =>
         verify(mockLock, times(1)).lock()
         verify(mockLock, times(1)).release()
 
@@ -418,7 +418,7 @@ class ProjectPersistenceServiceSpec extends FlatSpec with Matchers with MockitoS
     dbVersionQueryResult = Seq(dbVersionQueryResult.head, dbVersionQueryResult.head.copy(id = newDbVersion))
 
     projectService.initializeProject(projectName) match {
-      case Failure(PersistenceException(message, cause)) =>
+      case PersistenceError(message, cause) =>
         verify(mockLock, times(1)).lock()
         verify(mockLock, times(1)).release()
 
@@ -506,29 +506,110 @@ class ProjectPersistenceServiceSpec extends FlatSpec with Matchers with MockitoS
     }
   }
 
-  /*
-  Persistence service
-  ===================
+  "closeCurrentProject" should "cleanup resources when closing the project" in new NormalProjectsFixture {
+    val projectNames: Try[Seq[String]] = projectService.listProjects
+    projectNames.isSuccess shouldBe true
+    val allProjectNames: Seq[String] = projectNames.get
+    val projectName: String = allProjectNames.head
+    projectService.open(projectName) match {
+      case Success(_) =>
+        verify(mockLock, times(1)).lock()
+        verify(mockLock, never()).release()
+        projectService.closeCurrentProject() match {
+          case Success(_) =>
+            projectService.currentProject shouldBe empty
+            verify(mockLock, times(1)).release()
+            verify(mockDb, times(1)).close()
+            verifyNoMoreInteractions(mockLock, mockDb)
+          case somethingElse =>
+            fail(s"Wrong result when closing project: $somethingElse")
+        }
+      case somethingElse =>
+        fail(s"Wrong result when opening project: $somethingElse")
+    }
+  }
 
+  it should "return succcess if there is no open project" in new NormalProjectsFixture {
+    assume(projectService.currentProject.isEmpty)
+    projectService.closeCurrentProject() match {
+      case Success(_) =>
+        // ok
+      case somethingElse =>
+        fail("Wrong result when closing current project when there is no project. This should be a no-op.")
+    }
+  }
 
-  "closeCurrentProject" should "clear the current project upon successful project closing"
-  it should "return success if there is no open project"
-  it should "close the database upon successful project closing"
-  it should "release the project lock upon successful project closing"
-  it should "remove the shutdown hook upon successful project closing"
-  it should "fail with a PersistenceError if the database cannot be closed"
-  it should "fail with a PersistenceError if it cannot release the project lock"
-  it should "fail with a PersistenceError if it cannot remove the shutdown hook"
+  it should "fail with a PersistenceError if the database cannot be closed" in new NormalProjectsFixture {
+    val projectNames: Try[Seq[String]] = projectService.listProjects
+    projectNames.isSuccess shouldBe true
+    val allProjectNames: Seq[String] = projectNames.get
+    val projectName: String = allProjectNames.head
+    projectService.open(projectName) match {
+      case Success(_) =>
+        verify(mockLock, times(1)).lock()
+        verify(mockLock, never()).release()
 
-  "shutdown hook" should "close the database and release the project lock if invoked"
-  it should "not try to remove itself from the jvm shutdown hooks"
+        val dbCloseException = new RuntimeException("db doom")
+        doThrow(dbCloseException).when(mockDb).close()
 
-  */
+        projectService.closeCurrentProject() match {
+          case PersistenceError(_, cause) =>
+            cause shouldBe Some(dbCloseException)
+            projectService.currentProject should not be empty
+            verify(mockLock, never()).release()
+            verify(mockDb, times(1)).close()
+            verifyNoMoreInteractions(mockLock, mockDb)
+          case somethingElse =>
+            fail(s"Wrong result when closing project: $somethingElse")
+        }
+      case somethingElse =>
+        fail(s"Wrong result when opening project: $somethingElse")
+    }
+  }
 
-/*
-  Test all these
-  def open(projectName: String): Try[Project]
-  def closeCurrentProject(): Try[Unit]
+  it should "fail with a PersistenceError if it cannot release the project lock" in new NormalProjectsFixture {
+    val projectNames: Try[Seq[String]] = projectService.listProjects
+    projectNames.isSuccess shouldBe true
+    val allProjectNames: Seq[String] = projectNames.get
+    val projectName: String = allProjectNames.head
+    projectService.open(projectName) match {
+      case Success(_) =>
+        verify(mockLock, times(1)).lock()
+        verify(mockLock, never()).release()
 
- */
+        val lockReleaseException = new RuntimeException("db doom")
+        doThrow(lockReleaseException).when(mockLock).release()
+
+        projectService.closeCurrentProject() match {
+          case PersistenceError(_, cause) =>
+            cause shouldBe Some(lockReleaseException)
+            projectService.currentProject should not be empty
+            verify(mockLock, times(1)).release()
+            verify(mockDb, times(1)).close()
+            verifyNoMoreInteractions(mockLock, mockDb)
+          case somethingElse =>
+            fail(s"Wrong result when closing project: $somethingElse")
+        }
+      case somethingElse =>
+        fail(s"Wrong result when opening project: $somethingElse")
+    }
+
+  }
+
+  "shutdown hook" should "close the database and release the project lock if invoked" in new NormalProjectsFixture {
+    val projectNames: Try[Seq[String]] = projectService.listProjects
+    projectNames.isSuccess shouldBe true
+    val allProjectNames: Seq[String] = projectNames.get
+    val projectName: String = allProjectNames.head
+    projectService.open(projectName) match {
+      case Success(_) =>
+        val shutdownHook = projectService.asInstanceOf[HasShutdownHook].shutdownHook
+        shutdownHook.run()
+        projectService.currentProject shouldBe empty
+        Runtime.getRuntime.removeShutdownHook(shutdownHook) shouldBe true  // This proves it wasn't removed and ...
+        Runtime.getRuntime.removeShutdownHook(shutdownHook) shouldBe false // it can only be removed once
+      case somethingElse =>
+        fail(s"Wrong result when opening project: $somethingElse")
+    }
+  }
 }

@@ -58,7 +58,7 @@ class DBVersionDAOSpec extends FlatSpec with Matchers {
   it should "return a failure" in new DbFailureFixture {
     dao.get match {
       case Success(_) => fail("Should have failed")
-      case PersistenceError(e) if Option(e.getCause).map(_.getMessage).getOrElse("") == "doom" => // success
+      case PersistenceError(_, cause) if cause.map(_.getMessage).getOrElse("") == "doom" => // success
       case Failure(e) => fail("Wrong error: ", e)
     }
   }
@@ -68,7 +68,7 @@ class DBVersionDAOSpec extends FlatSpec with Matchers {
 
     dao.get match {
       case Success(_) => fail("Should have failed")
-      case PersistenceError(_) => // success
+      case PersistenceError(_, _) => // success
       case Failure(e) => fail("Wrong error: ", e)
     }
   }
@@ -78,7 +78,7 @@ class DBVersionDAOSpec extends FlatSpec with Matchers {
 
     dao.get match {
       case Success(_) => fail("Should have failed")
-      case PersistenceError(_) => // success
+      case PersistenceError(_, _) => // success
       case Failure(e) => fail("Wrong error: ", e)
     }
   }

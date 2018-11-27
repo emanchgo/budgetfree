@@ -174,10 +174,8 @@ private[persist] abstract class ProjectPersistenceServiceImpl(val projectsHomeDi
     }
 
     projectResult.recoverWith {
-      case pe@PersistenceException(_, _) =>
-        Failure(pe)
-      case se@SystemException(_,_) =>
-        Failure(se)
+      case PersistenceException(_, _) | SystemException(_, _) =>
+        projectResult
       case NonFatal(e) =>
         PersistenceError("Error opening project", e)
     }
