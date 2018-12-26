@@ -28,14 +28,14 @@ import java.util.Properties
 
 import grizzled.slf4j.Logging
 import slick.jdbc.DriverDataSource
-import slick.jdbc.SQLiteProfile.backend._
 import slick.util.ClassLoaderUtil
 import trove.constants.ProjectsHomeDir
-import trove.core.Project
 import trove.core.infrastructure.persist.lock.{LockResourceReleaseErrorHandling, ProjectLock}
 import trove.core.infrastructure.persist.schema.Tables
-import trove.core.services.ProjectService
-import trove.exceptional.{PersistenceError, PersistenceException, SystemException}
+import trove.core.{Project, Trove}
+import trove.events.ProjectChanged
+import trove.exceptional.{PersistenceError, PersistenceException, SystemException, ValidationError}
+import trove.services.ProjectService
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration._
@@ -60,21 +60,9 @@ private[persist] trait HasShutdownHook extends Logging { self : ProjectService =
   Runtime.getRuntime.addShutdownHook(shutdownHook)
 }
 
-private[persist] class ProjectImpl(val name: String, val lock: ProjectLock, val db: DatabaseDef)
-  extends Project with Logging {
-
-  override def toString: String = s"Project($name)"
-
-  def close(): Unit = {
-    db.close()
-    logger.debug(s"Database for project $name closed")
-    lock.release()
-    logger.debug(s"Lock for project $name released")
-    logger.info(s"Closed project $name")
-  }
-}
-
 private[core] object ProjectPersistenceService {
+
+  val ValidProjectNameChars: String = "^[a-zA-Z0-9_\\-]*$"
 
   val JdbcPrefix = "jdbc:sqlite:"
   val DbFilenameSuffix: String = ".sqlite3"
@@ -121,7 +109,22 @@ private[persist] abstract class ProjectPersistenceServiceImpl(val projectsHomeDi
       .map(_.stripSuffix(DbFilenameSuffix)).sorted
   }
 
-  override def open(projectName: String): Try[Project] = initializeProject(projectName)
+  override def open(projectName: String): Try[Project] =
+    if (projectName.matches(ValidProjectNameChars)) {
+      initializeProject(projectName).flatMap { project =>
+        logger.debug(s"Database for project $projectName successfully opened.")
+        Trove.eventService.publish(ProjectChanged(Some(project)))
+        Success(project)
+      }.recoverWith {
+        case NonFatal(e) =>
+          logger.error(s"Project with name $projectName could not be initialized. Closing project (if it was open).")
+          closeCurrentProject()
+          Failure(e)
+      }
+    }
+    else {
+      ValidationError(s"""Invalid project name: "$projectName." Valid characters are US-ASCII alphanumeric characters, '_', and '-'.""")
+    }
 
   private[persist] def initializeProject(projectName: String): Try[ProjectImpl] = _currentProject.fold[Try[ProjectImpl]] {
     logger.debug(s"Opening project: $projectName")
@@ -206,6 +209,7 @@ private[persist] abstract class ProjectPersistenceServiceImpl(val projectsHomeDi
     _currentProject.fold[Try[Unit]](Success({})) { project: ProjectImpl =>
       Try(project.close()).map { _ =>
         _currentProject = None
+        Trove.eventService.publish(ProjectChanged(None))
       }.recoverWith {
         case NonFatal(e) =>
           logger.error("Error closing project")

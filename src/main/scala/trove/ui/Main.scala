@@ -23,20 +23,18 @@
 
 package trove.ui
 
-import javafx.application.{Application => JFXApplication}
-
 import grizzled.slf4j.Logging
+import javafx.application.{Application => JFXApplication}
+import scalafx.Includes._
+import scalafx.application.JFXApp.PrimaryStage
+import scalafx.application.{JFXApp, Platform}
+import scalafx.scene.control.Alert.AlertType
 import trove.constants.ApplicationName
 import trove.core.Trove
 import trove.core.infrastructure.event.Event
 import trove.events.ProjectChanged
 import trove.ui.ButtonTypes._
 import trove.ui.fxext.AppModalAlert
-
-import scalafx.Includes._
-import scalafx.application.JFXApp.PrimaryStage
-import scalafx.application.{JFXApp, Platform}
-import scalafx.scene.control.Alert.AlertType
 
 private[ui] object Main extends JFXApp with Logging {
 
@@ -65,10 +63,10 @@ private[ui] object Main extends JFXApp with Logging {
     }
 
     def onReceive: PartialFunction[Event, Unit] = {
-      case ProjectChanged(projectName) => projectName.fold[Unit](setWelcomeScene()){ prj =>
+      case ProjectChanged(maybeProject) => maybeProject.fold[Unit](setWelcomeScene()){ prj =>
         maximized = true
         title = s"$ApplicationName [ ${prj.name} ]"
-        scene = new ActiveProjectScene(prj.name)
+        scene = new ActiveProjectScene(prj)
       }
     }
 

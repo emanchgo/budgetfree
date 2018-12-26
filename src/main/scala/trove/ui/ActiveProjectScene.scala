@@ -24,6 +24,7 @@
 
 package trove.ui
 
+import javafx.beans.value.ObservableValue
 import scalafx.Includes._
 import scalafx.geometry.Insets
 import scalafx.geometry.Orientation.Horizontal
@@ -33,19 +34,20 @@ import scalafx.scene.control._
 import scalafx.scene.image.ImageView
 import scalafx.scene.input.KeyCode
 import scalafx.scene.layout.BorderPane
-import trove.core.Trove
+import trove.core.{Project, Trove}
 import trove.ui.ButtonTypes.{No, Yes}
 import trove.ui.fxext.{AppModalAlert, Menu, MenuItem}
+import trove.ui.tracking.{AccountsButtonBar, AccountsView}
 
-private[ui] class ActiveProjectScene(projectName: String) extends Scene {
+private[ui] class ActiveProjectScene(project: Project) extends Scene {
 
   // With border panes - last in has priority.
+  //ejf-fixMe: move to tracking pkg
   private[this] val accountPane = new BorderPane {
     padding = Insets(20, 10, 10, 10)
-    center = Label("Accounts Pane")
-    top = Label("Accounts Button Bar")
-    //        center = BidderUI.tableView
-    //        top = BidderUI.header
+    center = new AccountsView(project.accountsService)
+    //top = Label("Accounts Button Bar")
+    top = new AccountsButtonBar
     minWidth = 300
     prefWidth = 300
   }
@@ -56,18 +58,12 @@ private[ui] class ActiveProjectScene(projectName: String) extends Scene {
     top = Label("Account Ledger Button Bar")
     prefWidth = 700
     minWidth = 700
-    //        center = AuctionItemUI.tableView
-    //        top = AuctionItemUI.header
   }
 
-
-  private[this] val trackingPane =  new BorderPane {
-    center = new SplitPane {
-      orientation = Horizontal
-      dividerPositions = 0
-      //dividerPositions_=(0)
-      items ++= Seq(accountPane, ledgerPane)
-    }
+  private[this] val trackingPane = new SplitPane {
+    orientation = Horizontal
+    dividerPositions = 0.05
+    items ++= Seq(accountPane, ledgerPane)
   }
 
   private[this] val tabPane = new TabPane {
@@ -115,7 +111,7 @@ private[ui] class ActiveProjectScene(projectName: String) extends Scene {
     items = Seq(
       new MenuItem("_Close Project", Some(KeyCode.C)) {
         onAction = _ => if(confirmCloseCurrentProjectWithUser()) {
-          Trove.closeCurrentProject()
+          Trove.projectService.closeCurrentProject()
         }
       },
       new MenuItem("E_xit Trove", Some(KeyCode.X)) {
@@ -143,10 +139,21 @@ private[ui] class ActiveProjectScene(projectName: String) extends Scene {
     val result = new AppModalAlert(AlertType.Confirmation) {
       headerText = "Close Project?"
       buttonTypes = Seq(Yes,No)
-      contentText = s"Are you sure you want to close project '$projectName?'"
+      contentText = s"Are you sure you want to close project '${project.name}?'"
     }.showAndWait()
 
     result.map(bt => if(bt == Yes) true else false).fold(false)(identity)
   }
+
+  // The height and width listener will keep the divider positions where
+  // we want them - so that when the scene is resized, the dividers don't move
+  private[this] val resizeListener = new javafx.beans.value.ChangeListener[Number] {
+    override def changed(observableValue: ObservableValue[_ <: Number], t: Number, t1: Number): Unit = {
+      trackingPane.dividerPositions = 0.05
+    }
+  }
+
+  height.addListener(resizeListener)
+  width.addListener(resizeListener)
 
 }

@@ -25,9 +25,6 @@
 package trove.ui
 
 import grizzled.slf4j.Logging
-import trove.core.Trove
-import trove.ui.fxext.AppModalAlert
-
 import scalafx.application.Platform
 import scalafx.geometry.{Insets, Pos}
 import scalafx.scene.Scene
@@ -36,6 +33,8 @@ import scalafx.scene.control.{Button, TextInputDialog}
 import scalafx.scene.image.ImageView
 import scalafx.scene.layout._
 import scalafx.scene.paint.Color
+import trove.core.Trove
+import trove.ui.fxext.AppModalAlert
 
 private[ui] object WelcomeScene {
 
@@ -80,7 +79,7 @@ private[ui] class WelcomeScene extends Scene(800, 600) with Logging {
           case _ => result
         }.fold(logger.debug("No project selected!")) { projectName =>
           logger.debug(s"Opening project: $projectName")
-          dialogOnError(Trove(projectName))
+          dialogOnError(Trove.projectService.open(projectName))
         }
       }
     }

@@ -91,7 +91,8 @@ package object ui extends Logging {
       }
       errorDialog(msg)
       ex match {
-        case NonFatal(x) => // do nothing
+        case NonFatal(e) =>
+          logger.error("Error in application", e)
         case _ =>
           logger.error("Fatal error, exiting application!", ex)
           Main.shutdown()

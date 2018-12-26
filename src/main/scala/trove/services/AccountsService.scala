@@ -20,14 +20,15 @@
  *  You should have received a copy of the GNU General Public License
  *  along with Trove.  If not, see <http://www.gnu.org/licenses/>.
  */
+package trove.services
 
-package trove.models
+import trove.models.Account
 
-object AccountType extends Enumeration {
-  type AccountType = Value
-  val Asset: AccountType              = Value("Asset")
-  val Liability: AccountType          = Value("Liability")
-  val Equity: AccountType             = Value("Equity")
-  val Income: AccountType             = Value("Income")
-  val Expense: AccountType            = Value("Expense")
+import scala.util.Try
+
+trait AccountsService {
+  def getAllAccounts: Try[Seq[Account]]
+  def createAccount(account: Account): Try[Unit]
+  def updateAccount(account: Account): Try[Unit]
+  def deleteAccount(account: Account): Try[Unit]
 }

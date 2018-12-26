@@ -21,13 +21,30 @@
  *  along with Trove.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package trove.models
+package trove.core.infrastructure.persist
 
-object AccountType extends Enumeration {
-  type AccountType = Value
-  val Asset: AccountType              = Value("Asset")
-  val Liability: AccountType          = Value("Liability")
-  val Equity: AccountType             = Value("Equity")
-  val Income: AccountType             = Value("Income")
-  val Expense: AccountType            = Value("Expense")
+import grizzled.slf4j.Logging
+import slick.jdbc.SQLiteProfile.backend._
+import trove.core.Project
+import trove.core.accounts.AccountsServiceImpl
+import trove.core.infrastructure.persist.lock.ProjectLock
+
+private[persist] class ProjectImpl(
+  val name: String,
+  val lock: ProjectLock,
+  val db: DatabaseDef)
+  extends Project with Logging {
+
+  override def toString: String = s"Project($name)"
+
+  val accountsService = new AccountsServiceImpl
+
+  def close(): Unit = {
+    db.close()
+    logger.debug(s"Database for project $name closed")
+    lock.release()
+    logger.debug(s"Lock for project $name released")
+    logger.info(s"Closed project $name")
+  }
 }
+

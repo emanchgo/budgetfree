@@ -23,22 +23,22 @@
 
 package trove.ui
 import grizzled.slf4j.Logging
-import trove.constants._
-import trove.core.Trove
-import trove.ui.ButtonTypes.{Cancel, Open}
-
-import scala.util.Try
 import scalafx.Includes._
 import scalafx.application.Platform
 import scalafx.collections.ObservableBuffer
 import scalafx.scene.control._
 import scalafx.scene.image.ImageView
 import scalafx.scene.layout.BorderPane
+import trove.constants._
+import trove.core.Trove
+import trove.ui.ButtonTypes.{Cancel, Open}
+
+import scala.util.Try
 
 private[ui] object ProjectChooser {
   val NewProjectString = "[ New Project ]"
   def apply(): Try[ProjectChooser] = dialogOnError {
-    Trove.listProjectNames.map { projectNames =>
+    Trove.projectService.listProjects.map { projectNames =>
       new ProjectChooser(NewProjectString +: projectNames.toList)
     }
   }

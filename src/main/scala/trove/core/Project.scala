@@ -1,5 +1,3 @@
-package trove.core
-
 /*
  *  # Trove
  *
@@ -23,6 +21,13 @@ package trove.core
  *  along with Trove.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+package trove.core
+
+import trove.services.AccountsService
+
 trait Project {
+
   def name: String
+
+  def accountsService: AccountsService
 }

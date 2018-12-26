@@ -1,11 +1,3 @@
-package trove.core.services
-
-import java.io.File
-
-import trove.core.Project
-
-import scala.util.Try
-
 /*
  *  # Trove
  *
@@ -29,7 +21,15 @@ import scala.util.Try
  *  along with Trove.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-private[core] trait ProjectService {
+package trove.services
+
+import java.io.File
+
+import trove.core.Project
+
+import scala.util.Try
+
+trait ProjectService {
   def projectsHomeDir: File
   def listProjects: Try[Seq[String]]
   def open(projectName: String): Try[Project]

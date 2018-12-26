@@ -27,55 +27,26 @@ import akka.actor.ActorSystem
 import grizzled.slf4j.Logging
 import trove.core.infrastructure.event.EventService
 import trove.core.infrastructure.persist.ProjectPersistenceService
-import trove.core.services.ProjectService
-import trove.events.ProjectChanged
-import trove.exceptional.ValidationError
+import trove.services.ProjectService
 
-import scala.util.control.NonFatal
-import scala.util.{Failure, Success, Try}
+import scala.util.{Success, Try}
 
 object Trove extends Logging {
 
-  private[this] val actorSystem: ActorSystem = ActorSystem("Trove_Actor_System")
+  private[this] lazy val actorSystem: ActorSystem = ActorSystem("Trove_Actor_System")
 
-  val eventService: EventService = EventService(actorSystem)
-  val projectService: ProjectService = ProjectPersistenceService()
+  lazy val eventService: EventService = EventService(actorSystem)
+  lazy val projectService: ProjectService = ProjectPersistenceService()
 
-  // For project name validation
-  private[this] val ValidProjectNameChars: String = "^[a-zA-Z0-9_\\-]*$"
-
-  def startup(): Try[Unit] = Success(Unit)
-
-  def listProjectNames: Try[Seq[String]] = projectService.listProjects
-
-  def apply(projectName: String): Try[Trove] =
-    if (projectName.matches(ValidProjectNameChars)) {
-      projectService.open(projectName).map { project =>
-        logger.debug(s"Database for project $projectName successfully opened.")
-        val result = new Trove(project)
-        eventService.publish(ProjectChanged(Some(project)))
-        result
-      }.recoverWith {
-        case NonFatal(e) =>
-          logger.error(s"Project with name $projectName could not be initialized. Closing project (if it was open).")
-          projectService.closeCurrentProject()
-          Failure(e)
-      }
-    }
-    else {
-      ValidationError(s"""Invalid project name: "$projectName." Valid characters are US-ASCII alphanumeric characters, '_', and '-'.""")
-    }
-
-  def closeCurrentProject(): Try[Unit] = projectService.closeCurrentProject().map { _ =>
-    eventService.publish(ProjectChanged(None))
+  def startup(): Try[Unit] = {
+    actorSystem
+    eventService
+    projectService
+    Success(Unit)
   }
 
   def shutdown(): Try[Unit] = projectService.closeCurrentProject().flatMap { _ =>
     Try(eventService.shutdown()).map(_ =>
         Unit)
   }
-}
-
-final class Trove private(val project: Project) {
-  override def toString: String = s"Trove($project)"
 }
