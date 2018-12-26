@@ -23,7 +23,8 @@
 
 package trove.ui.tracking
 
-import scalafx.scene.control.{TreeItem, TreeView}
+import scalafx.beans.property.ReadOnlyObjectWrapper
+import scalafx.scene.control.{TreeItem, TreeTableColumn, TreeTableView}
 import trove.models.Account
 import trove.models.AccountType.AccountType
 import trove.services.AccountsService
@@ -31,14 +32,32 @@ import trove.services.AccountsService
 import scala.collection.mutable
 import scala.util.Try
 
+// A marker type used for interaction with SFX.
 private[tracking] sealed trait AccountTreeViewable {
   def accountType: AccountType
 }
 
+// The tree item for the root of the tree in the tree table view
+private[tracking] class AccountRootItem extends TreeItem[AccountTreeViewable] {
+  expanded = true
+}
+
+// The tree item for an account type, which occurs just under the root of the tree in the tree table view.
+private[tracking] case class AccountTypeItem(accountTypeView: AccountTypeView) extends TreeItem[AccountTreeViewable](accountTypeView) {
+  expanded = true
+}
+
+// The tree item for an account
+private[tracking] case class AccountItem(accountView: AccountView) extends TreeItem[AccountTreeViewable](accountView) {
+  expanded = true
+}
+
+// Provides a view on an account type
 private[tracking] class AccountTypeView(val accountType: AccountType) extends AccountTreeViewable {
   override def toString: String = accountType.toString
 }
 
+// Provides a view on an account
 private[tracking] class AccountView(account: Account) extends AccountTreeViewable {
   override def toString: String = account.name
   def id: Option[Int] = account.id
@@ -46,15 +65,9 @@ private[tracking] class AccountView(account: Account) extends AccountTreeViewabl
   override def accountType: AccountType = account.accountType
 }
 
-private[tracking] class AccountRootItem() extends TreeItem[AccountTreeViewable] {
-  expanded = true
-}
-
-private[tracking] case class AccountItem(accountView: AccountView) extends TreeItem[AccountTreeViewable](accountView)
-
-private[tracking] case class AccountTypeItem(accountTypeView: AccountTypeView) extends TreeItem[AccountTreeViewable](accountTypeView)
-
-private[ui] class AccountsView(accountsService: AccountsService) extends TreeView[AccountTreeViewable] {
+// The accounts view. We use a tree table view to get the account name column, although we do
+// disable user sorting of the data.
+private[ui] class AccountsView(accountsService: AccountsService) extends TreeTableView[AccountTreeViewable] {
   import trove.ui._
 
   root = new AccountRootItem {
@@ -62,6 +75,30 @@ private[ui] class AccountsView(accountsService: AccountsService) extends TreeVie
   }
   showRoot = false
 
+  private[this] val accountNameColumn = new TreeTableColumn[AccountTreeViewable,AccountTreeViewable]("Account Name") {
+    // We want the ordering to be first by account type, and then by account name
+    comparator = (a: AccountTreeViewable, b: AccountTreeViewable) => {
+      val accountTypeCompare = a.accountType compare b.accountType
+      if (accountTypeCompare == 0) {
+        a.toString compare b.toString
+      }
+      else {
+        accountTypeCompare
+      }
+    }
+    sortable = false
+    cellValueFactory = { cdf =>
+      new ReadOnlyObjectWrapper[AccountTreeViewable](AccountsView.this, cdf.value.value().toString, cdf.value.value())
+    }
+  }
+  columns += accountNameColumn
+
+  // Fits the columns into the widget.
+  columnResizePolicy = TreeTableView.ConstrainedResizePolicy
+
+  sortOrder += accountNameColumn
+
+  // Builds the account trees, with each element returned representing the root of the account hierarchy tree for that account type.
   private[tracking] def accountTrees: Try[Seq[AccountTypeItem]] = {
     for {
       accounts <- accountsService.getAllAccounts
@@ -88,6 +125,7 @@ private[ui] class AccountsView(accountsService: AccountsService) extends TreeVie
     }
   }
 
+  // Recursive method to expand a tree
   def expandTree(node: Account, accountsByParentId: mutable.MultiMap[Option[Int], Account]): AccountItem = {
     new AccountItem(new AccountView(node)) {
       children = accountsByParentId.get(node.id).map { children =>

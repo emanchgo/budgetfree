@@ -1,6 +1,6 @@
 package trove.ui.tracking
 
-import scalafx.scene.control.{Button, Label, Tooltip}
+import scalafx.scene.control.{Button, Tooltip}
 import scalafx.scene.image.ImageView
 import scalafx.scene.layout.{HBox, VBox}
 import scalafx.scene.text.{Font, FontWeight, Text}
@@ -40,22 +40,22 @@ class AccountsButtonBar extends VBox {
       children = Seq(
         new Button { // Add
           graphic = new ImageView(getImage("add-new-16.png", 16))
-          tooltip = Tooltip("Add a bidder")
+          tooltip = Tooltip("Add an  account")
           //onAction = (ae:ActionEvent) => addNewBidder()
         },
         new Button { // Edit
-          tooltip = Tooltip("Edit selected bidder")
+          tooltip = Tooltip("Edit selected account")
           graphic = new ImageView(getImage("edit-16.png", 16))
           //onAction = (ae:ActionEvent) => editBidder(Option(tableView.selectionModel().getSelectedItem))
         },
         new Button { // Delete
-          tooltip = Tooltip("Delete selected bidder")
+          tooltip = Tooltip("Delete selected account")
           graphic = new ImageView(getImage("delete-16.png", 16))
           //onAction = (ae:ActionEvent) => deleteBidder(Option(tableView.selectionModel().getSelectedItem))
         }
       )
+      spacing = 5
     },
-    new Label("               ")
   )
   spacing = 5
 }

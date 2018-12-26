@@ -44,11 +44,15 @@ private[ui] class ActiveProjectScene(project: Project) extends Scene {
   // With border panes - last in has priority.
   //ejf-fixMe: move to tracking pkg
   private[this] val accountPane = new BorderPane {
-    padding = Insets(20, 10, 10, 10)
+    padding = Insets(10, 10, 10, 10)
     center = new AccountsView(project.accountsService)
     top = new AccountsButtonBar
     minWidth = 300
     prefWidth = 300
+
+    // Sets margin for center and top items in border pane; net result is that 10 px will be inserted.
+    BorderPane.setMargin(center(), Insets(5))
+    BorderPane.setMargin(top(), Insets(5))
   }
 
   private[this] val ledgerPane = new BorderPane {
