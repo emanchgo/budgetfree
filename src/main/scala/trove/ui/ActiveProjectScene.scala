@@ -46,7 +46,6 @@ private[ui] class ActiveProjectScene(project: Project) extends Scene {
   private[this] val accountPane = new BorderPane {
     padding = Insets(20, 10, 10, 10)
     center = new AccountsView(project.accountsService)
-    //top = Label("Accounts Button Bar")
     top = new AccountsButtonBar
     minWidth = 300
     prefWidth = 300

@@ -27,7 +27,7 @@ object AccountType extends Enumeration {
   type AccountType = Value
   val Asset: AccountType              = Value("Asset")
   val Liability: AccountType          = Value("Liability")
-  val Equity: AccountType             = Value("Equity")
   val Income: AccountType             = Value("Income")
   val Expense: AccountType            = Value("Expense")
+  val Equity: AccountType             = Value("Equity")
 }

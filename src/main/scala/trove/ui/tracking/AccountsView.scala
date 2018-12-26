@@ -62,7 +62,7 @@ private[ui] class AccountsView(accountsService: AccountsService) extends TreeVie
   }
   showRoot = false
 
-  private[tracking] def accountTrees: Try[Seq[TreeItem[AccountTreeViewable]]] = {
+  private[tracking] def accountTrees: Try[Seq[AccountTypeItem]] = {
     for {
       accounts <- accountsService.getAllAccounts
     }
@@ -78,20 +78,20 @@ private[ui] class AccountsView(accountsService: AccountsService) extends TreeVie
         expandTree(root, accountsByParentId)
       }
 
-      accountTrees.groupBy { treeItem =>
-        treeItem.value().accountType
+      accountTrees.groupBy { accountItem =>
+       accountItem.accountView.accountType
       }.map { case (atv, treeItems) =>
         new AccountTypeItem(new AccountTypeView(atv)) {
-          children = treeItems
+          children = treeItems.sortBy(_.accountView.toString)
         }
-      }.toSeq
+      }.toSeq.sortBy(_.accountTypeView.accountType)
     }
   }
 
-  def expandTree(node: Account, accountsByParentId: mutable.MultiMap[Option[Int], Account]): TreeItem[AccountTreeViewable] = {
+  def expandTree(node: Account, accountsByParentId: mutable.MultiMap[Option[Int], Account]): AccountItem = {
     new AccountItem(new AccountView(node)) {
       children = accountsByParentId.get(node.id).map { children =>
-        children.map(child => expandTree(child, accountsByParentId)).toSeq
+        children.map(child => expandTree(child, accountsByParentId)).toSeq.sortBy(_.accountView.toString)
       }.getOrElse(Seq.empty)
     }
   }
