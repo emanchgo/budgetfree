@@ -25,9 +25,12 @@ package trove.ui.tracking
 
 import scalafx.beans.property.ReadOnlyObjectWrapper
 import scalafx.scene.control.{TreeItem, TreeTableColumn, TreeTableView}
+import trove.core.infrastructure.event
+import trove.events.{AccountAdded, AccountDeleted, AccountParentChanged}
 import trove.models.Account
 import trove.models.AccountType.AccountType
 import trove.services.AccountsService
+import trove.ui.UIEventListener
 
 import scala.collection.mutable
 import scala.util.Try
@@ -35,6 +38,7 @@ import scala.util.Try
 // A marker type used for interaction with SFX.
 private[tracking] sealed trait AccountTreeViewable {
   def accountType: AccountType
+  def id: Option[Int]
 }
 
 // The tree item for the root of the tree in the tree table view
@@ -43,21 +47,51 @@ private[tracking] class AccountRootItem extends TreeItem[AccountTreeViewable] {
 }
 
 // The tree item for an account type, which occurs just under the root of the tree in the tree table view.
-private[tracking] case class AccountTypeItem(accountTypeView: AccountTypeView) extends TreeItem[AccountTreeViewable](accountTypeView) {
+private[tracking] class AccountTypeItem(val accountTypeView: AccountTypeView) extends TreeItem[AccountTreeViewable](accountTypeView) with UIEventListener {
   expanded = true
+
+  def accountType: AccountType = accountTypeView.accountType
+
+  override def onReceive: PartialFunction[event.Event, Unit] = {
+    case AccountAdded(account) if account.parentAccountId.isEmpty && account.accountType == accountType =>
+      // New top-level account
+      ???
+    case AccountDeleted(id, Right(parentAccountType)) if parentAccountType == accountType =>
+      // Delete a child account, because it is being deleted from Trove
+      ???
+    case AccountParentChanged(account, Right(oldParentAccountType)) if oldParentAccountType == accountType =>
+      // Delete a child account, because its parent is changing to something else
+      ???
+    case AccountParentChanged(account, _) if account.parentAccountId.isEmpty && account.accountType == accountType =>
+      // Add a child account to this type
+/*
+  case class AccountAdded(account: Account) extends Event
+  case class AccountUpdated(account: Account) extends Event
+  case class AccountDeleted(id: Int, parent: Either[Int, AccountType]) extends Event
+  case class AccountParentChanged(account: Account, oldParent: Either[Int, AccountType]) extends Event
+ */
+
+  }
+
 }
 
 // The tree item for an account
-private[tracking] case class AccountItem(accountView: AccountView) extends TreeItem[AccountTreeViewable](accountView) {
+private[tracking] class AccountItem(var accountView: AccountView) extends TreeItem[AccountTreeViewable](accountView) with UIEventListener {
   expanded = true
+
+  override def onReceive: PartialFunction[event.Event, Unit] = ???
+
 }
 
 // Provides a view on an account type
+// This class makes the account type display just the name of the type in the UI.
 private[tracking] class AccountTypeView(val accountType: AccountType) extends AccountTreeViewable {
+  override def id: Option[Int] = None
   override def toString: String = accountType.toString
 }
 
 // Provides a view on an account
+// This class makes the account type display just the name of the account in the UI.
 private[tracking] class AccountView(account: Account) extends AccountTreeViewable {
   override def toString: String = account.name
   def id: Option[Int] = account.id
@@ -99,7 +133,7 @@ private[ui] class AccountsView(accountsService: AccountsService) extends TreeTab
   sortOrder += accountNameColumn
 
   // Builds the account trees, with each element returned representing the root of the account hierarchy tree for that account type.
-  private[tracking] def accountTrees: Try[Seq[AccountTypeItem]] = {
+  private[this] def accountTrees: Try[Seq[AccountTypeItem]] = {
     for {
       accounts <- accountsService.getAllAccounts
     }
@@ -126,12 +160,13 @@ private[ui] class AccountsView(accountsService: AccountsService) extends TreeTab
   }
 
   // Recursive method to expand a tree
-  def expandTree(node: Account, accountsByParentId: mutable.MultiMap[Option[Int], Account]): AccountItem = {
-    new AccountItem(new AccountView(node)) {
-      children = accountsByParentId.get(node.id).map { children =>
+  def expandTree(account: Account, accountsByParentId: mutable.MultiMap[Option[Int], Account]): AccountItem = {
+    new AccountItem(new AccountView(account)) {
+      children = accountsByParentId.get(account.id).map { children =>
         children.map(child => expandTree(child, accountsByParentId)).toSeq.sortBy(_.accountView.toString)
       }.getOrElse(Seq.empty)
     }
   }
+
 }
 

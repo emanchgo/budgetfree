@@ -31,6 +31,8 @@ import org.scalatest.{FlatSpec, Matchers}
 import trove.core.Trove
 import trove.core.infrastructure.event.Event
 
+import scala.util.Try
+
 class UIEventListenerSpec extends FlatSpec with MockitoSugar with Matchers {
 
   case class EventA(id: Int) extends Event
@@ -44,6 +46,9 @@ class UIEventListenerSpec extends FlatSpec with MockitoSugar with Matchers {
     @volatile var events: List[Event] = List.empty
 
     val listener: UIEventListener = new UIEventListener {
+
+      override def reportError[A](code: => Try[A]): Try[A] = code
+
       override def onReceive: PartialFunction[Event, Unit] = {
         case ev@EventA(_) =>
           events = ev :: events

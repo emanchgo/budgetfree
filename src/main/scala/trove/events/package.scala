@@ -25,7 +25,14 @@ package trove
 
 import trove.core.Project
 import trove.core.infrastructure.event.Event
+import trove.models.Account
+import trove.models.AccountType.AccountType
 
 package object events {
   case class ProjectChanged(project: Option[Project]) extends Event
+
+  case class AccountAdded(account: Account) extends Event
+  case class AccountUpdated(account: Account) extends Event
+  case class AccountDeleted(id: Int, parent: Either[Int, AccountType]) extends Event
+  case class AccountParentChanged(account: Account, oldParent: Either[Int, AccountType]) extends Event
 }

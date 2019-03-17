@@ -27,14 +27,18 @@ import scalafx.application.Platform
 import trove.core.Trove
 import trove.core.infrastructure.event.{Event, EventListener}
 
+import scala.util.Try
+
 // Wrapper to ensure we update UI on event dispatch thread.
 // NOTE that unsubscribe MUST be called when a listener is de-allocated and garbage collection is intended.
 private[ui] trait UIEventListener extends EventListener {
 
+    def reportError[A](code: => Try[A]): Try[A] = dialogOnError(code)
+
     protected def _runLater(op: => Unit): Unit = Platform.runLater(op)
 
     final override def onEvent: PartialFunction[Event,Unit] = {
-      case e if onReceive.isDefinedAt(e) => _runLater(onReceive(e))
+      case e if onReceive.isDefinedAt(e) => reportError(Try(_runLater(onReceive(e))))
     }
 
     def onReceive: PartialFunction[Event,Unit]
