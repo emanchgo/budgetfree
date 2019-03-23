@@ -5,7 +5,7 @@
  *  helps you track your finances, FREES you from complex budgeting, and
  *  enables you to build your TROVE of savings!
  *
- *  Copyright © 2016-2018 Eric John Fredericks.
+ *  Copyright © 2016-2019 Eric John Fredericks.
  *
  *  Trove is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -33,17 +33,17 @@ import scala.util.Try
 // NOTE that unsubscribe MUST be called when a listener is de-allocated and garbage collection is intended.
 private[ui] trait UIEventListener extends EventListener {
 
-    def reportError[A](code: => Try[A]): Try[A] = dialogOnError(code)
+  def reportError[A](code: => Try[A]): Try[A] = dialogOnError(code)
 
-    protected def _runLater(op: => Unit): Unit = Platform.runLater(op)
+  protected def _runLater(op: => Unit): Unit = Platform.runLater(op)
 
-    final override def onEvent: PartialFunction[Event,Unit] = {
-      case e if onReceive.isDefinedAt(e) => reportError(Try(_runLater(onReceive(e))))
-    }
+  final override def onEvent: PartialFunction[Event,Unit] = {
+    case e if onReceive.isDefinedAt(e) => reportError(Try(_runLater(onReceive(e))))
+  }
 
-    def onReceive: PartialFunction[Event,Unit]
-    
-    Trove.eventService.subscribe(this)
+  def onReceive: PartialFunction[Event,Unit]
 
-    def unsubscribe(): Unit = Trove.eventService.unsubscribe(this)
+  Trove.eventService.subscribe(this)
+
+  def unsubscribe(): Unit = Trove.eventService.unsubscribe(this)
 }

@@ -12,7 +12,7 @@ import scalafx.scene.text.{Font, FontWeight, Text}
  *  helps you track your finances, FREES you from complex budgeting, and
  *  enables you to build your TROVE of savings!
  *
- *  Copyright © 2016-2018 Eric John Fredericks.
+ *  Copyright © 2016-2019 Eric John Fredericks.
  *
  *  Trove is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
