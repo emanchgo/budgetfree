@@ -31,5 +31,5 @@ case class Account(
   name: String,
   isPlaceholder: Boolean = false,
   description: Option[String] = None,
-  parentAccountId: Option[Int] = None
+  parentAccountId: Option[Int] = None // Empty means top-level account for this account type.
 )

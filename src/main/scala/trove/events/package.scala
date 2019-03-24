@@ -33,6 +33,6 @@ package object events {
 
   case class AccountAdded(account: Account) extends Event
   case class AccountUpdated(account: Account) extends Event
-  case class AccountDeleted(id: Int, parent: Either[Int, AccountType]) extends Event
-  case class AccountParentChanged(account: Account, oldParent: Either[Int, AccountType]) extends Event
+  case class AccountParentChanged(id: Int, oldParent: Either[AccountType, Int], newParent: Either[AccountType, Int]) extends Event
+  case class AccountDeleted(id: Int, parent: Either[AccountType, Int]) extends Event
 }
