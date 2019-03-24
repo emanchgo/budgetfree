@@ -58,7 +58,7 @@ private[tracking] class AccountItem(val accountView: AccountView) extends TreeIt
 }
 
 // Provides a view on an account type
-// This class makes the account type display just the name of the type in the UI.
+// This class makes the account type display just the name of the account type in the UI.
 private[tracking] class AccountTypeView(val accountType: AccountType) extends AccountTreeViewable {
   override def id: Option[Int] = None
   override def toString: String = accountType.toString
