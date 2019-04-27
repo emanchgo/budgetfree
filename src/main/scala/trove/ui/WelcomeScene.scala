@@ -79,7 +79,7 @@ private[ui] class WelcomeScene extends Scene(800, 600) with Logging {
           case _ => result
         }.fold(logger.debug("No project selected!")) { projectName =>
           logger.debug(s"Opening project: $projectName")
-          dialogOnError(Trove.projectService.open(projectName))
+          promptUserWithError(Trove.projectService.open(projectName))
         }
       }
     }

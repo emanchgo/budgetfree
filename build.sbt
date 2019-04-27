@@ -5,7 +5,7 @@
  *  helps you track your finances, FREES you from complex budgeting, and
  *  enables you to build your TROVE of savings!
  *
- *  Copyright © 2016-2018 Eric John Fredericks.
+ *  Copyright © 2016-2019 Eric John Fredericks.
  *
  *  Trove is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -28,7 +28,7 @@ name := "trove"
 
 version := "0.1.0-SNAPSHOT"
 
-scalaVersion := "2.12.7"
+scalaVersion := "2.12.8"
 
 scalacOptions ++= Seq("-deprecation", "-feature")
 

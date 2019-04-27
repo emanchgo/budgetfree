@@ -1,3 +1,10 @@
+package trove.ui.tracking
+
+import scalafx.geometry.Orientation.Horizontal
+import scalafx.Includes._
+import scalafx.scene.control.SplitPane
+import trove.core.Project
+
 /*
  *  # Trove
  *
@@ -21,8 +28,12 @@
  *  along with Trove.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package trove
+class TrackingPane(project: Project) extends SplitPane {
+  val accountPane = new AccountPane(project)
+  val ledgerPane = new LedgerPane(project)
 
-// ejf-fixMe: implement startup and shutdown tests.
-class TroveSpec {
+  orientation = Horizontal
+  dividerPositions = 0.05
+  items ++= Seq(accountPane, ledgerPane)
+
 }

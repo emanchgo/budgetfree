@@ -33,7 +33,7 @@ import scala.util.Try
 // NOTE that unsubscribe MUST be called when a listener is de-allocated and garbage collection is intended.
 private[ui] trait UIEventListener extends EventListener {
 
-  def reportError[A](code: => Try[A]): Try[A] = dialogOnError(code)
+  def reportError[A](code: => Try[A]): Try[A] = promptUserWithError(code)
 
   protected def _runLater(op: => Unit): Unit = Platform.runLater(op)
 

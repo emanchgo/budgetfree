@@ -1,3 +1,10 @@
+package trove.ui.tracking
+
+import scalafx.Includes._
+import scalafx.geometry.Insets
+import scalafx.scene.layout.BorderPane
+import trove.core.Project
+
 /*
  *  # Trove
  *
@@ -21,8 +28,14 @@
  *  along with Trove.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package trove
+class AccountPane(project: Project) extends BorderPane {
+  padding = Insets(10, 10, 10, 10)
+  center = new AccountsView(project.accountsService)
+  top = new AccountsButtonBar
+  minWidth = 300
+  prefWidth = 300
 
-// ejf-fixMe: implement startup and shutdown tests.
-class TroveSpec {
+  // Sets margin for center and top items in border pane; net result is that 10 px will be inserted.
+  BorderPane.setMargin(center(), Insets(5))
+  BorderPane.setMargin(top(), Insets(5))
 }

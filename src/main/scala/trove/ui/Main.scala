@@ -43,7 +43,7 @@ private[ui] object Main extends JFXApp with Logging {
 
   Platform.implicitExit = false
 
-  dialogOnError(Trove.startup()).recover { case _ => shutdown()}
+  promptUserWithError(Trove.startup()).recover { case _ => shutdown()}
 
   stage = new PrimaryStage with UIEventListener {
     title = ApplicationName
@@ -108,7 +108,7 @@ private[ui] object Main extends JFXApp with Logging {
   }
 
   def shutdown(): Unit = {
-    dialogOnError(Trove.shutdown())
+    promptUserWithError(Trove.shutdown())
     logger.debug("Application closing")
     Platform.exit()
   }

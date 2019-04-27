@@ -75,7 +75,7 @@ package object ui extends Logging {
 
   import ButtonTypes._
 
-  private[ui] def dialogOnError[A](code: => Try[A]): Try[A] = code match {
+  private[ui] def promptUserWithError[A](exec: => Try[A]): Try[A] = exec match {
 
     case FailQuietly =>
       logger.debug("Failing quietly")
@@ -83,11 +83,11 @@ package object ui extends Logging {
 
     case result@Failure(ex) =>
       logger.error("Intercepted error.", ex)
-      val msg: String = ex match {
+      val msg: String = result match {
         case ValidationError(message, _, errors) => s"$message\n\n" + errors.mkString("\n")
-        case NonFatal(e) => messageOf(e)
+        case Failure(NonFatal(e)) => messageOf(e)
         case e =>
-          s"Fatal error - ${messageOf(e)}"
+          s"Fatal error - ${messageOf(ex)}"
       }
       errorDialog(msg)
       ex match {
@@ -110,7 +110,7 @@ package object ui extends Logging {
     else e.getMessage
   }
 
-  private[ui] def errorDialog = (msg: String) => {
+  private[ui] def errorDialog: String => Option[ButtonType] = (msg: String) => {
     new AppModalAlert(AlertType.Error) {
       buttonTypes = Seq(Close)
       headerText = s"$ApplicationName Error"

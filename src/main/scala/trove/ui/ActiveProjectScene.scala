@@ -25,9 +25,6 @@
 package trove.ui
 
 import javafx.beans.value.ObservableValue
-import scalafx.Includes._
-import scalafx.geometry.Insets
-import scalafx.geometry.Orientation.Horizontal
 import scalafx.scene.Scene
 import scalafx.scene.control.Alert.AlertType
 import scalafx.scene.control._
@@ -37,37 +34,11 @@ import scalafx.scene.layout.BorderPane
 import trove.core.{Project, Trove}
 import trove.ui.ButtonTypes.{No, Yes}
 import trove.ui.fxext.{AppModalAlert, Menu, MenuItem}
-import trove.ui.tracking.{AccountsButtonBar, AccountsView}
+import trove.ui.tracking.TrackingPane
 
 private[ui] class ActiveProjectScene(project: Project) extends Scene {
 
-  // With border panes - last in has priority.
-  //ejf-fixMe: move to tracking pkg
-  private[this] val accountPane = new BorderPane {
-    padding = Insets(10, 10, 10, 10)
-    center = new AccountsView(project.accountsService)
-    top = new AccountsButtonBar
-    minWidth = 300
-    prefWidth = 300
-
-    // Sets margin for center and top items in border pane; net result is that 10 px will be inserted.
-    BorderPane.setMargin(center(), Insets(5))
-    BorderPane.setMargin(top(), Insets(5))
-  }
-
-  private[this] val ledgerPane = new BorderPane {
-    padding = Insets(20, 10, 10, 10)
-    center = Label("Account Ledger Pane")
-    top = Label("Account Ledger Button Bar")
-    prefWidth = 700
-    minWidth = 700
-  }
-
-  private[this] val trackingPane = new SplitPane {
-    orientation = Horizontal
-    dividerPositions = 0.05
-    items ++= Seq(accountPane, ledgerPane)
-  }
+  private[this] val trackingPane = new TrackingPane(project)
 
   private[this] val tabPane = new TabPane {
     tabs = Seq(

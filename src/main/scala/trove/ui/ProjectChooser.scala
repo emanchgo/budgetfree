@@ -37,7 +37,7 @@ import scala.util.Try
 
 private[ui] object ProjectChooser {
   val NewProjectString = "[ New Project ]"
-  def apply(): Try[ProjectChooser] = dialogOnError {
+  def apply(): Try[ProjectChooser] = promptUserWithError {
     Trove.projectService.listProjects.map { projectNames =>
       new ProjectChooser(NewProjectString +: projectNames.toList)
     }

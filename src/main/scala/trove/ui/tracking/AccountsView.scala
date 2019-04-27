@@ -84,7 +84,7 @@ private[ui] class AccountsView(accountsService: AccountsService) extends TreeTab
   @volatile private[this] var accountItemsByAccountId: Map[Int, AccountItem] = Map.empty
 
   root = new AccountRootItem {
-    children = dialogOnError(accountTrees).getOrElse(Seq.empty)
+    children = promptUserWithError(accountTrees).getOrElse(Seq.empty)
   }
   showRoot = false
 

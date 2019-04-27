@@ -30,6 +30,7 @@ import scalafx.scene.control._
 import scalafx.scene.image.ImageView
 import scalafx.scene.layout.VBox
 import trove.constants.ApplicationVersion
+import trove.util.io._
 import trove.ui.ButtonTypes._
 import trove.ui.fxext.AppModalAlert
 
@@ -42,27 +43,27 @@ private[ui] class HelpAboutDialog extends AppModalAlert(AlertType.Information) {
   val appLabel_1 = Label(s"Trove Version $ApplicationVersion")
   val description_1 = Label("A FREE desktop application that helps you track your finances,")
   val description_2 = Label("FREES you from complex budgeting, and enables you to build your TROVE of savings!")
-  val copyrightLabel = Label("Copyright © 2016-2018 Eric John Fredericks")
+  val copyrightLabel = Label("Copyright © 2016-2019 Eric John Fredericks")
   val licenseLinkLabel = Label("This software is licensed under the")
-  val licenseLink = new Hyperlink {
+  val licenseLink: Hyperlink = new Hyperlink {
     text = "GNU General Public License, version 3.0"
     onAction = (_: ActionEvent) => { Main.hostServices.showDocument("https://www.gnu.org/licenses/gpl-3.0.txt")}
   }
   val iconLinkLabel = Label("Icons provided are free for personal or commercial use under license by")
-  val iconLink = new Hyperlink {
+  val iconLink: Hyperlink = new Hyperlink {
     text = "Icons8."
     onAction = (_: ActionEvent) => { Main.hostServices.showDocument("https://icons8.com")}
   }
   val thirdPartyLicenseLinkLabel = Label("This software incorporates many open source libraries.")
 
   private[this] def thirdPartyLicenseTextArea: TextArea = {
-    val fileContents = Source.fromURL(ThirdPartyLicenseUrlTextUrl).getLines.mkString("\n")
+    val fileContents = using(Source.fromURL(ThirdPartyLicenseUrlTextUrl))(_.getLines.mkString("\n"))
     val ta = new TextArea(fileContents)
     ta.editable = false
     ta
   }
 
-  val thirdPartyLicenseButton = new Button {
+  val thirdPartyLicenseButton: Button = new Button {
     mnemonicParsing = true
     text = "_Third-Party Licenses..."
 
@@ -76,7 +77,7 @@ private[ui] class HelpAboutDialog extends AppModalAlert(AlertType.Information) {
     }.showAndWait()
   }
 
-  val theContent = new VBox {
+  val theContent: VBox = new VBox {
     children = Seq(appLabel_1,
       blankLabel,
       description_1, description_2,
