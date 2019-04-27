@@ -49,7 +49,7 @@ private[core] object EventService {
   def apply(actorSystem: ActorSystem): EventService = new EventServiceImpl(actorSystem)
 }
 
-class EventServiceImpl(actorSystem: ActorSystem) extends EventService with Logging {
+private[core] class EventServiceImpl(val actorSystem: ActorSystem) extends EventService with Logging {
   logger.info("Starting event service!")
 
     @volatile private[this] var subscriptions = Map.empty[EventListener,ActorRef]

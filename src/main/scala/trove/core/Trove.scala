@@ -31,22 +31,42 @@ import trove.services.ProjectService
 
 import scala.util.{Success, Try}
 
-object Trove extends Logging {
+trait Trove {
+  def startup(): Try[Unit]
+  def shutdown(): Try[Unit]
+  def eventService: EventService
+  def projectService: ProjectService
+}
 
-  private[this] lazy val actorSystem: ActorSystem = ActorSystem("Trove_Actor_System")
+object Trove extends Trove {
 
-  lazy val eventService: EventService = EventService(actorSystem)
-  lazy val projectService: ProjectService = ProjectPersistenceService()
+  private val trove: Trove = new TroveImpl
+  override def startup(): Try[Unit] = trove.startup()
+  override def shutdown(): Try[Unit] = trove.shutdown()
+  override def eventService: EventService = trove.eventService
+  override def projectService: ProjectService = trove.projectService
+}
 
-  def startup(): Try[Unit] = {
+private[core] class TroveImpl extends Trove with Logging {
+
+  private[this] lazy val _actorSystem: ActorSystem = ActorSystem("Trove_Actor_System")
+  private[this] lazy val _eventService = EventService(actorSystem)
+  private[this] lazy val _projectService = ProjectPersistenceService()
+
+  private[core] def actorSystem: ActorSystem = _actorSystem
+  override def eventService: EventService = _eventService
+  override def projectService: ProjectService = _projectService
+
+  final def startup(): Try[Unit] = {
     actorSystem
     eventService
     projectService
     Success(Unit)
   }
 
-  def shutdown(): Try[Unit] = projectService.closeCurrentProject().flatMap { _ =>
+  final def shutdown(): Try[Unit] = projectService.closeCurrentProject().flatMap { _ =>
     Try(eventService.shutdown()).map(_ =>
         Unit)
   }
 }
+
