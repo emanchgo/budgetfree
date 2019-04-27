@@ -2,7 +2,6 @@ package trove.util
 
 import scala.util.control.NonFatal
 
-//ejf-fixMe: add unit test.
 package object io {
 
   def using[T <: AutoCloseable, V](r: => T)(f: T => V): V = {
@@ -40,5 +39,4 @@ package object io {
       resource.close()
     }
   }
-
 }
