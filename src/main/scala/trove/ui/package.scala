@@ -86,16 +86,15 @@ package object ui extends Logging {
       val msg: String = result match {
         case ValidationError(message, _, errors) => s"$message\n\n" + errors.mkString("\n")
         case Failure(NonFatal(e)) => messageOf(e)
-        case e =>
-          s"Fatal error - ${messageOf(ex)}"
+        case _ =>
+          throw ex
       }
-      errorDialog(msg)
       ex match {
         case NonFatal(e) =>
           logger.error("Error in application", e)
+          errorDialog(msg)
         case _ =>
-          logger.error("Fatal error, exiting application!", ex)
-          Main.shutdown()
+          throw ex
       }
       result
 

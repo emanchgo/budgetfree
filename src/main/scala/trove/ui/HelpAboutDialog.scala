@@ -30,11 +30,12 @@ import scalafx.scene.control._
 import scalafx.scene.image.ImageView
 import scalafx.scene.layout.VBox
 import trove.constants.ApplicationVersion
-import trove.util.io._
 import trove.ui.ButtonTypes._
 import trove.ui.fxext.AppModalAlert
+import trove.util.io._
 
 import scala.io.Source
+import scala.util.Try
 
 private[ui] class HelpAboutDialog extends AppModalAlert(AlertType.Information) {
   graphic = new ImageView(ApplicationIconImage64)
@@ -57,7 +58,12 @@ private[ui] class HelpAboutDialog extends AppModalAlert(AlertType.Information) {
   val thirdPartyLicenseLinkLabel = Label("This software incorporates many open source libraries.")
 
   private[this] def thirdPartyLicenseTextArea: TextArea = {
-    val fileContents = using(Source.fromURL(ThirdPartyLicenseUrlTextUrl))(_.getLines.mkString("\n"))
+
+    val fileContents: String = promptUserWithError {
+      using(Source.fromURL(ThirdPartyLicenseUrlTextUrl)) { bufferedSource =>
+        Try(bufferedSource.getLines.mkString("\n"))
+      }
+    }.toOption.getOrElse("")
     val ta = new TextArea(fileContents)
     ta.editable = false
     ta
