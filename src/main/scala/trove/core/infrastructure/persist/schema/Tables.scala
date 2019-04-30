@@ -32,12 +32,13 @@ private[persist] object Tables {
     def id: Rep[Int] = column[Int]("ID", O.PrimaryKey, O.AutoInc)
     def accountType: Rep[AccountType] = column[AccountType]("ACCOUNT_TYPE")       // can't be null
     def name: Rep[String] = column[String]("ACCOUNT_NAME")                   // can't be null
+    def code: Rep[String] = column[String]("ACCOUNT_CODE")
     def isPlaceHolder: Rep[Boolean] = column[Boolean]("IS_PLACEHOLDER")       // can't be null
     def description: Rep[String] = column[String]("ACCOUNT_DESCRIPTION")
     def parentAccountId: Rep[Int] = column[Int]("PARENT_ACCOUNT_ID")
 
     def * : ProvenShape[Account] =
-      (id.?, accountType, name, isPlaceHolder, description.?, parentAccountId.?) <> (Account.tupled, Account.unapply)
+      (id.?, accountType, name, code.?, isPlaceHolder, description.?, parentAccountId.?) <> (Account.tupled, Account.unapply)
   }
   val accounts: TableQuery[Accounts] = TableQuery[Accounts]
 
