@@ -28,7 +28,7 @@ import trove.core.Project
  *  along with Trove.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-class TrackingPane(project: Project) extends SplitPane {
+private[ui] class TrackingPane(project: Project) extends SplitPane {
   val accountPane = new AccountPane(project)
   val ledgerPane = new LedgerPane(project)
 

@@ -20,18 +20,12 @@
  *  You should have received a copy of the GNU General Public License
  *  along with Trove.  If not, see <http://www.gnu.org/licenses/>.
  */
+package trove.ui.fxext
 
-package trove.models
+object FieldMetadata {
+  def apply(name: String, length: Int): FieldMetadata = FieldMetadata(name, Some(length))
+}
 
-import trove.models.AccountTypes.AccountType
-
-case class Account(
-  id: Option[Long],
-  version: Long,
-  accountType: AccountType,
-  name: String,
-  code: Option[String],
-  isPlaceholder: Boolean = false,
-  description: Option[String] = None,
-  parentAccountId: Option[Long] = None // Empty means top-level account for this account type.
-)
+case class FieldMetadata(name: String, maxLength: Option[Int] = None) {
+  maxLength.foreach(l => l > 0)
+}

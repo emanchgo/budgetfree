@@ -20,18 +20,36 @@
  *  You should have received a copy of the GNU General Public License
  *  along with Trove.  If not, see <http://www.gnu.org/licenses/>.
  */
+package trove.ui.fxext
 
-package trove.models
+import scalafx.scene.control.{ButtonType, Dialog}
+import trove.exceptional.ValidationError
+import trove.ui.{ButtonTypes, promptUserWithError}
 
-import trove.models.AccountTypes.AccountType
+import scala.annotation.tailrec
+import scala.util.{Success, Try}
 
-case class Account(
-  id: Option[Long],
-  version: Long,
-  accountType: AccountType,
-  name: String,
-  code: Option[String],
-  isPlaceholder: Boolean = false,
-  description: Option[String] = None,
-  parentAccountId: Option[Long] = None // Empty means top-level account for this account type.
-)
+private[ui] trait PromptUntilValid[A] {
+
+  self: Dialog[ButtonType] =>
+
+  protected def buildFromInput: A
+
+  @tailrec
+  // The op could be a template method too, but we're decoupling the behavior interacting with the server.
+  final def promptUntilValid(op: A => Try[A]): Option[A] = {
+    showAndWait() match {
+      case None => None
+      case Some(bt) => bt match {
+        case ButtonTypes.Cancel => None
+        case _ => promptUserWithError(op(buildFromInput)) match {
+          case Success(it) =>
+            Some(it)
+          case ValidationError(_, _, _) =>
+            promptUntilValid(op)
+          case _ => None
+        }
+      }
+    }
+  }
+}

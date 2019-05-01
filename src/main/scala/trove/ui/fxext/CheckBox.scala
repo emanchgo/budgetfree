@@ -21,17 +21,14 @@
  *  along with Trove.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package trove.models
+package trove.ui.fxext
 
-import trove.models.AccountTypes.AccountType
+import scalafx.scene.control.Label
 
-case class Account(
-  id: Option[Long],
-  version: Long,
-  accountType: AccountType,
-  name: String,
-  code: Option[String],
-  isPlaceholder: Boolean = false,
-  description: Option[String] = None,
-  parentAccountId: Option[Long] = None // Empty means top-level account for this account type.
-)
+object CheckBox {
+  def apply(metadata: FieldMetadata): CheckBox = new CheckBox(metadata)
+}
+
+class CheckBox(metadata: FieldMetadata) extends scalafx.scene.control.CheckBox {
+  def label: Label = new Label(metadata.name)
+}

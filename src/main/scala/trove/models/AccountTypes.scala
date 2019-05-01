@@ -23,15 +23,11 @@
 
 package trove.models
 
-import trove.models.AccountTypes.AccountType
-
-case class Account(
-  id: Option[Long],
-  version: Long,
-  accountType: AccountType,
-  name: String,
-  code: Option[String],
-  isPlaceholder: Boolean = false,
-  description: Option[String] = None,
-  parentAccountId: Option[Long] = None // Empty means top-level account for this account type.
-)
+object AccountTypes extends Enumeration {
+  type AccountType = Value
+  val Asset: AccountType              = Value("Asset")
+  val Liability: AccountType          = Value("Liability")
+  val Income: AccountType             = Value("Income")
+  val Expense: AccountType            = Value("Expense")
+  val Equity: AccountType             = Value("Equity")
+}

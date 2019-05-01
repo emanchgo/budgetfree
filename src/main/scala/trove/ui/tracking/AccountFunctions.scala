@@ -21,13 +21,19 @@
  *  along with Trove.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package trove.models
+package trove.ui.tracking
 
-object AccountType extends Enumeration {
-  type AccountType = Value
-  val Asset: AccountType              = Value("Asset")
-  val Liability: AccountType          = Value("Liability")
-  val Income: AccountType             = Value("Income")
-  val Expense: AccountType            = Value("Expense")
-  val Equity: AccountType             = Value("Equity")
+import grizzled.slf4j.Logging
+import scalafx.event.ActionEvent
+import trove.services.AccountsService
+
+private[tracking] class AccountFunctions(accountService: AccountsService) extends Logging{
+
+  val addAccount: ActionEvent => Unit = _ => {
+    val accountDialog = new AccountDialog
+    accountDialog.promptUntilValid { acct =>
+      logger.debug(s"Adding account: $acct")
+      accountService.createAccount(acct)
+    }
+  }
 }

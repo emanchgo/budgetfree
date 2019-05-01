@@ -1,5 +1,7 @@
 package trove.ui.tracking
 
+import scalafx.Includes._
+import scalafx.event.ActionEvent
 import scalafx.scene.control.{Button, Tooltip}
 import scalafx.scene.image.ImageView
 import scalafx.scene.layout.{HBox, VBox}
@@ -28,7 +30,7 @@ import scalafx.scene.text.{Font, FontWeight, Text}
  *  along with Trove.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-class AccountsButtonBar extends VBox {
+private[tracking] class AccountsButtonBar(addAccountFn: ActionEvent => Unit) extends VBox {
   import trove.ui._
 
   children = Seq(
@@ -41,7 +43,7 @@ class AccountsButtonBar extends VBox {
         new Button { // Add
           graphic = new ImageView(getImage("add-new-16.png", 16))
           tooltip = Tooltip("Add an  account")
-          //onAction = (ae:ActionEvent) => addNewBidder()
+          onAction = addAccountFn
         },
         new Button { // Edit
           tooltip = Tooltip("Edit selected account")

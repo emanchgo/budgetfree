@@ -1,10 +1,3 @@
-package trove.ui.tracking
-
-import scalafx.geometry.Insets
-import scalafx.scene.control.Label
-import scalafx.scene.layout.BorderPane
-import trove.core.Project
-
 /*
  *  # Trove
  *
@@ -28,7 +21,14 @@ import trove.core.Project
  *  along with Trove.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-class LedgerPane(project: Project) extends BorderPane {
+package trove.ui.tracking
+
+import scalafx.geometry.Insets
+import scalafx.scene.control.Label
+import scalafx.scene.layout.BorderPane
+import trove.core.Project
+
+private[tracking] class LedgerPane(project: Project) extends BorderPane {
   padding = Insets(20, 10, 10, 10)
   center = Label("Account Ledger Pane")
   top = Label("Account Ledger Button Bar")

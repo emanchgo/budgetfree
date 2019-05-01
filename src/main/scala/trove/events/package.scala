@@ -26,7 +26,7 @@ package trove
 import trove.core.Project
 import trove.core.infrastructure.event.Event
 import trove.models.Account
-import trove.models.AccountType.AccountType
+import trove.models.AccountTypes.AccountType
 
 package object events {
   case class ProjectChanged(project: Option[Project]) extends Event

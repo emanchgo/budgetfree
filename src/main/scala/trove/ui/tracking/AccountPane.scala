@@ -1,10 +1,3 @@
-package trove.ui.tracking
-
-import scalafx.Includes._
-import scalafx.geometry.Insets
-import scalafx.scene.layout.BorderPane
-import trove.core.Project
-
 /*
  *  # Trove
  *
@@ -28,12 +21,24 @@ import trove.core.Project
  *  along with Trove.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+package trove.ui.tracking
+
+import scalafx.Includes._
+import scalafx.geometry.Insets
+import scalafx.scene.layout.BorderPane
+import trove.core.Project
+
 class AccountPane(project: Project) extends BorderPane {
+  private[this] val accountFunctions = new AccountFunctions(project.accountsService)
+
   padding = Insets(10, 10, 10, 10)
   center = new AccountsView(project.accountsService)
-  top = new AccountsButtonBar
+  top = new AccountsButtonBar(
+    addAccountFn = accountFunctions.addAccount
+  )
   minWidth = 300
   prefWidth = 300
+
 
   // Sets margin for center and top items in border pane; net result is that 10 px will be inserted.
   BorderPane.setMargin(center(), Insets(5))

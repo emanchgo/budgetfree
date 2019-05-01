@@ -7,7 +7,7 @@ import slick.jdbc.SQLiteProfile.api._
 import slick.lifted.ProvenShape
 import slick.sql.FixedSqlStreamingAction
 import trove.core.infrastructure.persist.DBVersion
-import trove.models.{Account, AccountType}
+import trove.models.{Account, AccountTypes}
 
 import scala.util.Try
 
@@ -27,18 +27,19 @@ private[persist] object Tables {
 
   // ACCOUNTS TABLE
   class Accounts(tag: Tag) extends Table[Account](tag, "ACCOUNTS") {
-    import AccountType._
+    import AccountTypes._
 
-    def id: Rep[Int] = column[Int]("ID", O.PrimaryKey, O.AutoInc)
+    def id: Rep[Long] = column[Long]("ID", O.PrimaryKey, O.AutoInc)
+    def version: Rep[Long] = column[Long]("VERSION") // can't be null
     def accountType: Rep[AccountType] = column[AccountType]("ACCOUNT_TYPE")       // can't be null
     def name: Rep[String] = column[String]("ACCOUNT_NAME")                   // can't be null
     def code: Rep[String] = column[String]("ACCOUNT_CODE")
     def isPlaceHolder: Rep[Boolean] = column[Boolean]("IS_PLACEHOLDER")       // can't be null
     def description: Rep[String] = column[String]("ACCOUNT_DESCRIPTION")
-    def parentAccountId: Rep[Int] = column[Int]("PARENT_ACCOUNT_ID")
+    def parentAccountId: Rep[Long] = column[Long]("PARENT_ACCOUNT_ID")
 
     def * : ProvenShape[Account] =
-      (id.?, accountType, name, code.?, isPlaceHolder, description.?, parentAccountId.?) <> (Account.tupled, Account.unapply)
+      (id.?, version, accountType, name, code.?, isPlaceHolder, description.?, parentAccountId.?) <> (Account.tupled, Account.unapply)
   }
   val accounts: TableQuery[Accounts] = TableQuery[Accounts]
 
@@ -51,7 +52,7 @@ private[persist] object Tables {
         s"enumeration $s doesn't exist $enum [${enum.values.mkString(",")}]"))
     )
 
-  implicit val accountTypeMapper: JdbcType[AccountType.Value] with BaseTypedType[AccountType.Value] = enumValueMapper(AccountType)
+  implicit val accountTypeMapper: JdbcType[AccountTypes.Value] with BaseTypedType[AccountTypes.Value] = enumValueMapper(AccountTypes)
 
   // Setup action
   lazy val setupAction: DBIO[Unit] = DBIO.seq(

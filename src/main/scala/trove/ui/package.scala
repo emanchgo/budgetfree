@@ -37,6 +37,7 @@ import scala.reflect.runtime.{universe => ru}
 import scala.util.control.NonFatal
 import scala.util.{Failure, Try}
 
+//ejf-fixMe: all of this to fxext and consider membership in lib-kalergic
 package object ui extends Logging {
 
   private[this] val ApplicationIconPath = "gold-pot-96.png"
@@ -61,7 +62,7 @@ package object ui extends Logging {
   }
 
   private[ui] object ButtonTypes {
-//    val Add = new ButtonType("_Add", ButtonBar.ButtonData.OKDone)
+    val Add = new ButtonType("_Add", ButtonBar.ButtonData.OKDone)
     val Cancel = new ButtonType("_Cancel", ButtonBar.ButtonData.CancelClose)
     val Create = new ButtonType("C_reate", ButtonBar.ButtonData.OKDone)
     val Close = new ButtonType("_Close", ButtonBar.ButtonData.OKDone)
@@ -69,7 +70,7 @@ package object ui extends Logging {
     val Ok = new ButtonType("_OK", ButtonBar.ButtonData.OKDone)
     val No = new ButtonType("_No", ButtonBar.ButtonData.CancelClose)
     val Open = new ButtonType("_Open", ButtonBar.ButtonData.OKDone)
-//    val Update = new ButtonType("_Update", ButtonBar.ButtonData.CancelClose)
+    val Update = new ButtonType("_Update", ButtonBar.ButtonData.CancelClose)
     val Yes = new ButtonType("_Yes", ButtonBar.ButtonData.OKDone)
   }
 
@@ -118,4 +119,10 @@ package object ui extends Logging {
     }.showAndWait()
   }
 
+  implicit class String2Option(value: String) {
+    def toOption: Option[String] = value match {
+      case "" => None
+      case s => Option(s)
+    }
+  }
 }

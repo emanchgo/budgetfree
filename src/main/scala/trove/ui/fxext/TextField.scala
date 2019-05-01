@@ -21,17 +21,25 @@
  *  along with Trove.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package trove.models
+package trove.ui.fxext
 
-import trove.models.AccountTypes.AccountType
+import scalafx.scene.control.Label
 
-case class Account(
-  id: Option[Long],
-  version: Long,
-  accountType: AccountType,
-  name: String,
-  code: Option[String],
-  isPlaceholder: Boolean = false,
-  description: Option[String] = None,
-  parentAccountId: Option[Long] = None // Empty means top-level account for this account type.
-)
+object TextField {
+  def apply(metadata: FieldMetadata): TextField = new TextField(metadata)
+}
+
+class TextField(metadata: FieldMetadata) extends scalafx.scene.control.TextField {
+  val maxLength: Int = metadata.maxLength.getOrElse(Int.MaxValue)
+  require(maxLength > 0)
+
+  val label: Label = Label(metadata.name)
+
+  text.onChange {
+    (_,oldValue,newValue) => {
+      if(newValue.length > oldValue.length && newValue.length > maxLength) {
+        text = newValue.substring(0, maxLength)
+      }
+    }
+  }
+}
