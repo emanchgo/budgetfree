@@ -32,7 +32,6 @@ import scalafx.scene.control.Alert.AlertType
 import scalafx.scene.control.{Button, TextInputDialog}
 import scalafx.scene.image.ImageView
 import scalafx.scene.layout._
-import scalafx.scene.paint.Color
 import trove.core.Trove
 import trove.ui.fxext.AppModalAlert
 
@@ -102,7 +101,7 @@ private[ui] class WelcomeScene extends Scene(800, 600) with Logging {
 
   root = new BorderPane {
     padding = Insets(100, 250, 100, 250)
-    background = new Background(Seq(new BackgroundFill(Color.Purple, null, null)), Seq.empty)
+    background = new Background(Seq(new BackgroundFill(TroveColor.RichDarkBlue, null, null)), Seq.empty)
 
     center = new VBox {
       spacing = 20

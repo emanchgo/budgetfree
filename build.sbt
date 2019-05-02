@@ -36,15 +36,17 @@ coverageEnabled := true
 coverageExcludedPackages := "trove\\.models\\..*;trove\\.event\\..*;trove\\.ui\\..*"
 
 // Versions
-val akkaVersion          = "2.5.17"
-val grizzledSlf4jVersion = "1.3.2"
-val scalaFxVersion       = "11-R16"
-val javaFxVersion        = "11"
-val slf4jVersion         = "1.7.25"
-val slickVersion         = "3.2.3"
-val sqliteJdbcVersion    = "3.25.2"
+val akkaVersion          = "2.5.22"
+val grizzledSlf4jVersion = "1.3.3"
+val scalaFxVersion       = "12.0.1-R17"
+val javaFxVersion        = "12.0.1"
+val slf4jVersion         = "1.7.16"
+val slickVersion         = "3.3.0"
+val sqliteJdbcVersion    = "3.27.2.1"
 
-val mockitoVersion       = "2.23.0"
+//ejf-fixMe: try out mockito-scala
+val mockitoVersion       = "2.27.0"
+
 val scalacticVersion     = "3.0.5"
 val scalatestVersion     = "3.0.5"
 

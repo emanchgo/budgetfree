@@ -58,7 +58,8 @@ package object ui extends Logging {
   def blankLabel = Label(" ")
 
   private[ui] object TroveColor {
-    val PenguinPurple: Color = Color.rgb(66,0,66)
+    //val PenguinPurple: Color = Color.rgb(66,0,66)
+    val RichDarkBlue: Color = Color.rgb(0, 0, 102)
   }
 
   private[ui] object ButtonTypes {
