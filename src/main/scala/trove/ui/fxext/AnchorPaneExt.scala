@@ -23,31 +23,36 @@
 
 package trove.ui.fxext
 
-import scalafx.geometry.Insets
-import scalafx.scene.control.Label
+import scalafx.scene.Node
+import scalafx.scene.layout.AnchorPane.{setBottomAnchor, setLeftAnchor, setRightAnchor, setTopAnchor}
 
-object TextField {
-  def apply(metadata: FieldMetadata): TextField = new TextField(metadata)
-}
-
-class TextField(metadata: FieldMetadata) extends scalafx.scene.control.TextField {
-  val maxLength: Int = metadata.maxLength.getOrElse(Int.MaxValue)
-  require(maxLength > 0)
-
-  val label: Label = Label(metadata.name)
-  label.setPadding(Insets(5))
-
-  metadata.controlWidth.foreach { width =>
-    minWidth = width
-    maxWidth = width
-    prefWidth = width
+object AnchorPaneExt {
+  /**
+    * Sets the anchors for the child when contained by an anchorpane.
+    *
+    * @param child Node to be set
+    * @param top Top Anchor
+    * @param left Left Anchor
+    */
+  def setAnchors(child: Node, top: Double, left: Double) {
+    setTopAnchor(child, top)
+    setLeftAnchor(child, left)
   }
 
-  text.onChange {
-    (_,oldValue,newValue) => {
-      if(newValue.length > oldValue.length && newValue.length > maxLength) {
-        text = newValue.substring(0, maxLength)
-      }
-    }
+  /**
+    * Sets the anchors for the child when contained by an anchorpane.
+    *
+    * @param child Node to be set
+    * @param top Top Anchor
+    * @param right Right Anchor
+    * @param bottom Bottom Anchor
+    * @param left Left Anchor
+    */
+  def setAnchors(child: Node, top: Double, right: Double, bottom: Double, left: Double) {
+    setTopAnchor(child, top)
+    setRightAnchor(child, right)
+    setBottomAnchor(child, bottom)
+    setLeftAnchor(child, left)
   }
+
 }

@@ -64,9 +64,11 @@ private[ui] object Main extends JFXApp with Logging {
 
     def onReceive: PartialFunction[Event, Unit] = {
       case ProjectChanged(maybeProject) => maybeProject.fold[Unit](setWelcomeScene()){ prj =>
+        hide()
         maximized = true
         title = s"$ApplicationName [ ${prj.name} ]"
         scene = new ActiveProjectScene(prj)
+        show()
       }
     }
 

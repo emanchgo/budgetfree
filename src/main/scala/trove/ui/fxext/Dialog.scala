@@ -23,31 +23,16 @@
 
 package trove.ui.fxext
 
-import scalafx.geometry.Insets
-import scalafx.scene.control.Label
+import scalafx.Includes
+import scalafx.application.Platform
+import scalafx.stage.Window
 
-object TextField {
-  def apply(metadata: FieldMetadata): TextField = new TextField(metadata)
-}
+class Dialog[A](_owner: Window) extends scalafx.scene.control.Dialog[A] with Includes {
+  initOwner(_owner)
 
-class TextField(metadata: FieldMetadata) extends scalafx.scene.control.TextField {
-  val maxLength: Int = metadata.maxLength.getOrElse(Int.MaxValue)
-  require(maxLength > 0)
-
-  val label: Label = Label(metadata.name)
-  label.setPadding(Insets(5))
-
-  metadata.controlWidth.foreach { width =>
-    minWidth = width
-    maxWidth = width
-    prefWidth = width
-  }
-
-  text.onChange {
-    (_,oldValue,newValue) => {
-      if(newValue.length > oldValue.length && newValue.length > maxLength) {
-        text = newValue.substring(0, maxLength)
-      }
-    }
+  Platform.runLater {
+    // Center dialog box with respect to owner
+    x = owner.x() + owner.width() / 2 - width() / 2
+    y = owner.y() + owner.height() / 2 - height() / 2
   }
 }

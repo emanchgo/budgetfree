@@ -23,28 +23,31 @@
 package trove.ui.tracking
 
 import grizzled.slf4j.Logging
-import scalafx.Includes._
 import scalafx.geometry.Insets
 import scalafx.scene.Node
-import scalafx.scene.control.{ButtonType, Dialog}
+import scalafx.scene.control.ButtonType
 import scalafx.scene.image.ImageView
-import scalafx.scene.layout.GridPane
+import scalafx.scene.layout.AnchorPane
 import trove.constants.ApplicationName
 import trove.models.{Account, AccountTypes}
 import trove.ui.fxext._
-import trove.ui._
-import trove.ui.{ApplicationIconImage64, ButtonTypes, Main}
+import trove.ui.{ApplicationIconImage64, ButtonTypes, Main, _}
 
 trait AccountDialogFieldMetadata {
   val Id = FieldMetadata("Id")
-  val AccountTypeMeta = FieldMetadata("Account Type")
-  val AccountNameMeta = FieldMetadata("Account Name", length=30)
-  val AccountCodeMeta = FieldMetadata("Account Code", length=10)
-  val AccountDescriptionMeta = FieldMetadata("Description", length=50)
+  val AccountParentMeta = FieldMetadata("Parent Account")
+  val AccountNameMeta = FieldMetadata("Account Name", length=30, width=270)
+  val AccountCodeMeta = FieldMetadata("Account Code", length=10, width=105)
+  val AccountDescriptionMeta = FieldMetadata("Description", length=50, width=435)
   val IsPlaceholderMeta = FieldMetadata("Transfers Allowed\nIn Subaccounts Only")
 }
 
 private[tracking] object AccountDialog {
+
+  val LineHeight: Int = 40
+  val Line1: Int = 0 * LineHeight
+  val Line2: Int = 1 * LineHeight
+  val Line3: Int = 2 * LineHeight
 
   sealed trait AccountDialogType {
     def headerText: String
@@ -63,7 +66,7 @@ private[tracking] object AccountDialog {
 }
 
 private[tracking] final class AccountDialog(account: Option[Account] = None)
-  extends Dialog[ButtonType]
+  extends Dialog[ButtonType](Main.stage)
   with AccountDialogFieldMetadata
   with PromptUntilValid[Account]
   with Logging {
@@ -79,7 +82,6 @@ private[tracking] final class AccountDialog(account: Option[Account] = None)
   title = ApplicationName
   graphic = new ImageView(ApplicationIconImage64)
   headerText = dialogType.headerText
-  initOwner(Main.stage)
 
   dialogPane().setMinHeight(625)
   dialogPane().setMaxHeight(625)
@@ -89,37 +91,43 @@ private[tracking] final class AccountDialog(account: Option[Account] = None)
   private[this] val id: Option[Long] = account.flatMap(_.id)
   private[this] val nextVersion: Long = account.map(_.version + 1).getOrElse(0)
 
-  private[this] val accountTypeField = ChoiceBox(AccountTypeMeta, AccountTypes.values.toSeq) // replace later with parent selector
+  private[this] val accountParentField = ChoiceBox(AccountParentMeta, AccountTypes.values.toSeq) // replace later with parent selector
   private[this] val accountNameField = TextField(AccountNameMeta)
   private[this] val accountCodeField = TextField(AccountCodeMeta)
   private[this] val accountDescriptionField = TextField(AccountDescriptionMeta)
   private[this] val isPlaceholderField = CheckBox(IsPlaceholderMeta)
 
-  dialogPane().content = new GridPane {
-    hgap = 5
-    vgap = 5
-    padding = Insets(10, 10, 10, 10)
+  dialogPane().content = new AnchorPane {
+    padding = Insets(10)
 
-    add(accountNameField.label, 0, 0)
-    add(accountNameField, 1, 0)
+    // Line 1
+    AnchorPaneExt.setAnchors(accountNameField.label, Line1, 0)
+    AnchorPaneExt.setAnchors(accountNameField, Line1, 110)
+    AnchorPaneExt.setAnchors(accountCodeField.label, Line1, 400)
+    AnchorPaneExt.setAnchors(accountCodeField, Line1, 510)
 
-    add(accountDescriptionField.label, 2, 0)
-    add(accountDescriptionField, 3, 0)
+    // Line 2
+    AnchorPaneExt.setAnchors(accountDescriptionField.label, Line2, 0)
+    AnchorPaneExt.setAnchors(accountDescriptionField, Line2, 85)
+    AnchorPaneExt.setAnchors(isPlaceholderField.label, Line2, 540)
+    AnchorPaneExt.setAnchors(isPlaceholderField, Line2 + 5, 685)
 
-    add(accountCodeField.label, 0, 1)
-    add(accountCodeField, 1, 1)
-
-    add(isPlaceholderField.label, 2, 1)
-    add(isPlaceholderField, 3, 1)
-
-    add(accountTypeField.label, 0, 2)
-    add(accountTypeField, 1, 2)
+    // Line 3
+    AnchorPaneExt.setAnchors(accountParentField.label, Line3, 0)
+    AnchorPaneExt.setAnchors(accountParentField, Line3, 120)
+    children = Seq(
+      accountNameField.label, accountNameField,
+      accountCodeField.label, accountCodeField,
+      accountDescriptionField.label, accountDescriptionField,
+      isPlaceholderField.label, isPlaceholderField,
+      accountParentField.label, accountParentField
+    )
   }
 
   override protected def buildFromInput: Account = Account(
     id = id,
     version = nextVersion,
-    accountType = accountTypeField.value(),
+    accountType = accountParentField.value(),
     name = accountNameField.text().trim,
     code = accountCodeField.text().trim.toOption,
     description = accountDescriptionField.text().trim.toOption,
@@ -127,10 +135,10 @@ private[tracking] final class AccountDialog(account: Option[Account] = None)
   )
 
   private[this] def updateButtonStatus(): Unit =
-    saveButton.disable = accountNameField.text().trim.isEmpty || accountTypeField.value() == null
+    saveButton.disable = accountNameField.text().trim.isEmpty || accountParentField.value() == null
 
   // Disable when minimally required fields are empty
-  accountTypeField.value.onChange {
+  accountParentField.value.onChange {
     (_,_,_) => updateButtonStatus()
   }
   accountNameField.text.onChange {
@@ -138,7 +146,7 @@ private[tracking] final class AccountDialog(account: Option[Account] = None)
   }
 
   account.foreach { acct =>
-    accountTypeField.value = acct.accountType
+    accountParentField.value = acct.accountType
     accountNameField.text = acct.name
     accountCodeField.text = acct.code.getOrElse("")
     isPlaceholderField.selected = acct.isPlaceholder

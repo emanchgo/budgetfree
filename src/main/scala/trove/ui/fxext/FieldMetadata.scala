@@ -24,8 +24,10 @@ package trove.ui.fxext
 
 object FieldMetadata {
   def apply(name: String, length: Int): FieldMetadata = FieldMetadata(name, Some(length))
+  def apply(name: String, length: Int, width: Int): FieldMetadata = FieldMetadata(name, Some(length), Some(width))
 }
 
-case class FieldMetadata(name: String, maxLength: Option[Int] = None) {
-  maxLength.foreach(l => l > 0)
+case class FieldMetadata(name: String, maxLength: Option[Int] = None, controlWidth: Option[Int] = None) {
+  maxLength.foreach(l => require(l > 0, "field length must be a positive integer"))
+  controlWidth.foreach(w => require(w > 0, "control width must be a positive integer"))
 }

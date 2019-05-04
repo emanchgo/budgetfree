@@ -22,7 +22,7 @@
  */
 package trove.ui.fxext
 
-import scalafx.scene.control.{ButtonType, Dialog}
+import scalafx.scene.control.ButtonType
 import trove.exceptional.ValidationError
 import trove.ui.{ButtonTypes, promptUserWithError}
 

@@ -31,7 +31,7 @@ import trove.core.Project
 class AccountPane(project: Project) extends BorderPane {
   private[this] val accountFunctions = new AccountFunctions(project.accountsService)
 
-  padding = Insets(10, 10, 10, 10)
+  padding = Insets(10)
   center = new AccountsView(project.accountsService)
   top = new AccountsButtonBar(
     addAccountFn = accountFunctions.addAccount

@@ -24,6 +24,7 @@
 package trove.ui.fxext
 
 import scalafx.collections.ObservableBuffer
+import scalafx.geometry.Insets
 import scalafx.scene.control.Label
 
 object ChoiceBox {
@@ -31,5 +32,6 @@ object ChoiceBox {
 }
 
 class ChoiceBox[A](metadata: FieldMetadata, choices: Seq[A]) extends scalafx.scene.control.ChoiceBox[A](ObservableBuffer(choices)) {
-  def label: Label = new Label(metadata.name)
+  val label: Label = new Label(metadata.name)
+  label.setPadding(Insets(5))
 }

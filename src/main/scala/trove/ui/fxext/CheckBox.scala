@@ -30,5 +30,5 @@ object CheckBox {
 }
 
 class CheckBox(metadata: FieldMetadata) extends scalafx.scene.control.CheckBox {
-  def label: Label = new Label(metadata.name)
+  val label: Label = new Label(metadata.name)
 }
