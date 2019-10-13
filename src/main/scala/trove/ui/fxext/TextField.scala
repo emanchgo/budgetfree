@@ -31,8 +31,8 @@ object TextField {
 }
 
 class TextField(metadata: FieldMetadata) extends scalafx.scene.control.TextField {
-  val maxLength: Int = metadata.maxLength.getOrElse(Int.MaxValue)
-  require(maxLength > 0)
+  val maxChars: Int = metadata.maxChars.getOrElse(Int.MaxValue)
+  require(maxChars > 0)
 
   val label: Label = Label(metadata.name)
   label.setPadding(Insets(5))
@@ -45,8 +45,8 @@ class TextField(metadata: FieldMetadata) extends scalafx.scene.control.TextField
 
   text.onChange {
     (_,oldValue,newValue) => {
-      if(newValue.length > oldValue.length && newValue.length > maxLength) {
-        text = newValue.substring(0, maxLength)
+      if(newValue.length > oldValue.length && newValue.length > maxChars) {
+        text = newValue.substring(0, maxChars)
       }
     }
   }

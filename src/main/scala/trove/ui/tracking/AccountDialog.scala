@@ -25,7 +25,7 @@ package trove.ui.tracking
 import grizzled.slf4j.Logging
 import scalafx.geometry.Insets
 import scalafx.scene.Node
-import scalafx.scene.control.ButtonType
+import scalafx.scene.control.{Button, ButtonType}
 import scalafx.scene.image.ImageView
 import scalafx.scene.layout.AnchorPane
 import trove.constants.ApplicationName
@@ -36,10 +36,12 @@ import trove.ui.{ApplicationIconImage64, ButtonTypes, Main, _}
 trait AccountDialogFieldMetadata {
   val Id = FieldMetadata("Id")
   val AccountParentMeta = FieldMetadata("Parent Account")
-  val AccountNameMeta = FieldMetadata("Account Name", length=30, width=270)
-  val AccountCodeMeta = FieldMetadata("Account Code", length=10, width=105)
-  val AccountDescriptionMeta = FieldMetadata("Description", length=50, width=435)
+  val AccountNameMeta = FieldMetadata("Account Name", maxChars=30, width=270)
+  val AccountCodeMeta = FieldMetadata("Account Code", maxChars=10, width=105)
+  val AccountDescriptionMeta = FieldMetadata("Description", maxChars=50, width=435)
   val IsPlaceholderMeta = FieldMetadata("Transfers Allowed\nIn Subaccounts Only")
+  val UnitMeta = FieldMetadata("Currency/Security")
+  val SmallestFractionMeta = FieldMetadata("Smallest Fraction")
 }
 
 private[tracking] object AccountDialog {
@@ -48,6 +50,7 @@ private[tracking] object AccountDialog {
   val Line1: Int = 0 * LineHeight
   val Line2: Int = 1 * LineHeight
   val Line3: Int = 2 * LineHeight
+  val Line4: Int = 3 * LineHeight
 
   sealed trait AccountDialogType {
     def headerText: String
@@ -96,6 +99,11 @@ private[tracking] final class AccountDialog(account: Option[Account] = None)
   private[this] val accountCodeField = TextField(AccountCodeMeta)
   private[this] val accountDescriptionField = TextField(AccountDescriptionMeta)
   private[this] val isPlaceholderField = CheckBox(IsPlaceholderMeta)
+  private[this] val unitField = TextField(UnitMeta)
+  private[this] val unitSelectButton = new Button {
+
+  }
+  private[this] val smallestFraction = ChoiceBox(SmallestFractionMeta, Seq(.01, .001, .0001, .00001, .000001))
 
   dialogPane().content = new AnchorPane {
     padding = Insets(10)
@@ -113,8 +121,10 @@ private[tracking] final class AccountDialog(account: Option[Account] = None)
     AnchorPaneExt.setAnchors(isPlaceholderField, Line2 + 5, 685)
 
     // Line 3
-    AnchorPaneExt.setAnchors(accountParentField.label, Line3, 0)
-    AnchorPaneExt.setAnchors(accountParentField, Line3, 120)
+
+    // Line 4
+    AnchorPaneExt.setAnchors(accountParentField.label, Line4, 0)
+    AnchorPaneExt.setAnchors(accountParentField, Line4, 120)
     children = Seq(
       accountNameField.label, accountNameField,
       accountCodeField.label, accountCodeField,
