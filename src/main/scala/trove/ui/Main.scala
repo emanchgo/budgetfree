@@ -36,6 +36,10 @@ import trove.events.ProjectChanged
 import trove.ui.ButtonTypes._
 import trove.ui.fxext.AppModalAlert
 
+// Linux workaround using Java 12 / JavaFx 13.
+// May be fixed in Java 13 / JavaFX 13.
+//https://stackoverflow.com/questions/57425854/javafx-window-opens-in-top-left-corner-then-jumps-to-center
+//-Djdk.gtk.version=2
 private[ui] object Main extends JFXApp with Logging {
 
   System.setProperty("prism.lcdtext", "true")
