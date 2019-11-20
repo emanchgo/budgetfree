@@ -29,7 +29,7 @@ import scalafx.scene.control.{Button, ButtonType}
 import scalafx.scene.image.ImageView
 import scalafx.scene.layout.AnchorPane
 import trove.constants.ApplicationName
-import trove.models.{Account, AccountTypes}
+import trove.models.Account
 import trove.ui.fxext._
 import trove.ui.{ApplicationIconImage64, ButtonTypes, Main, _}
 
@@ -68,7 +68,7 @@ private[tracking] object AccountDialog {
   }
 }
 
-private[tracking] final class AccountDialog(account: Option[Account] = None)
+private[tracking] final class AccountDialog(parentCandidates: Seq[Account], account: Option[Account] = None)
   extends Dialog[ButtonType](Main.stage)
   with AccountDialogFieldMetadata
   with PromptUntilValid[Account]
@@ -94,7 +94,8 @@ private[tracking] final class AccountDialog(account: Option[Account] = None)
   private[this] val id: Option[Long] = account.flatMap(_.id)
   private[this] val nextVersion: Long = account.map(_.version + 1).getOrElse(0)
 
-  private[this] val accountParentField = ChoiceBox(AccountParentMeta, AccountTypes.values.toSeq) // replace later with parent selector
+  private[this] val accountParentField = ParentAccountSelector(AccountParentMeta,
+    account.map(a => parentCandidates.filterNot(_.id.get == a.id.get)).getOrElse(parentCandidates))
   private[this] val accountNameField = TextField(AccountNameMeta)
   private[this] val accountCodeField = TextField(AccountCodeMeta)
   private[this] val accountDescriptionField = TextField(AccountDescriptionMeta)
@@ -137,11 +138,12 @@ private[tracking] final class AccountDialog(account: Option[Account] = None)
   override protected def buildFromInput: Account = Account(
     id = id,
     version = nextVersion,
-    accountType = accountParentField.value(),
+    accountType = accountParentField.selectedParentAccountType,
     name = accountNameField.text().trim,
     code = accountCodeField.text().trim.toOption,
     description = accountDescriptionField.text().trim.toOption,
-    isPlaceholder = isPlaceholderField.isSelected
+    isPlaceholder = isPlaceholderField.isSelected,
+    parentAccountId = accountParentField.selectedParentAccountId
   )
 
   private[this] def updateButtonStatus(): Unit =
@@ -156,7 +158,7 @@ private[tracking] final class AccountDialog(account: Option[Account] = None)
   }
 
   account.foreach { acct =>
-    accountParentField.value = acct.accountType
+    accountParentField.setSelectedParent(acct.id.map(Left(_)).getOrElse(Right(acct.accountType)))
     accountNameField.text = acct.name
     accountCodeField.text = acct.code.getOrElse("")
     isPlaceholderField.selected = acct.isPlaceholder

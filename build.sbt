@@ -32,6 +32,8 @@ scalaVersion := "2.12.8"
 
 scalacOptions ++= Seq("-deprecation", "-feature")
 
+javaOptions ++= Seq("-Djdk.gtk.version=2")
+
 coverageEnabled := true
 coverageExcludedPackages := "trove\\.models\\..*;trove\\.event\\..*;trove\\.ui\\..*"
 
