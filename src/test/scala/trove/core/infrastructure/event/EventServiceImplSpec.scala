@@ -41,7 +41,9 @@ class EventServiceImplSpec extends FlatSpec with MockitoSugar with Matchers {
     @volatile var currentlySubscribed = false
     @volatile var ids: List[Int] = List.empty
 
-    class Listener extends EventListener {
+     class Listener extends EventListener {
+
+      override val eventSubscriberGroup: Int = 42
 
       override def onEvent: PartialFunction[Event, Unit] = {
         case TestEvent(id) =>

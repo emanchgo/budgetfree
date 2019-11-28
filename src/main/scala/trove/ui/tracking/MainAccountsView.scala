@@ -29,13 +29,14 @@ import trove.core.infrastructure.event
 import trove.events._
 import trove.models.Account
 import trove.models.AccountTypes.AccountType
-import trove.ui.UIEventListener
+import trove.services.AccountsService
+import trove.ui.{UIEventListener, _}
 
 import scala.collection.mutable
 
 // The accounts view. We use a tree table view to get the account name column, although we do
 // disable user sorting of the data.
-private[tracking] class MainAccountsView(accountsCache: AccountsCache) extends TreeTableView[AccountTreeViewable] with UIEventListener {
+private[tracking] class MainAccountsView(override val eventSubscriberGroup: Int, accountsService: AccountsService) extends TreeTableView[AccountTreeViewable] with UIEventListener {
 
   @volatile private[this] var accountTypeItemsByAccountType: Map[AccountType, AccountTypeItem] = Map.empty
   @volatile private[this] var accountItemsByAccountId: Map[Long, AccountItem] = Map.empty
@@ -82,7 +83,9 @@ private[tracking] class MainAccountsView(accountsCache: AccountsCache) extends T
     }
 
     val accountsByParentId = new mutable.HashMap[Option[Long], mutable.Set[Account]] with mutable.MultiMap[Option[Long], Account]
-    accountsCache.getAllAccounts.foreach(a => accountsByParentId.addBinding(a.parentAccountId, a))
+    promptUserWithError(accountsService.getAllAccounts).map { accounts =>
+      accounts.foreach(a => accountsByParentId.addBinding(a.parentAccountId, a))
+    }
 
     val topLevelAccounts = accountsByParentId(None).toSeq
     val accountTrees = for {
@@ -112,7 +115,7 @@ private[tracking] class MainAccountsView(accountsCache: AccountsCache) extends T
     case AccountDeleted(id, parent) =>
       deleteAccount(id, parent)
     case ProjectChanged(_) =>
-      unsubscribe()
+      unsubscribe() // ejf-fixMe: Unsubscribe group! Might be a good way to quicky remove subscriptions for all things related to a project.
   }
 
   private[this] def addAccount(account: Account): Unit = {

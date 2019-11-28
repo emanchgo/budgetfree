@@ -36,9 +36,9 @@ import trove.ui.ButtonTypes.{No, Yes}
 import trove.ui.fxext.{AppModalAlert, Menu, MenuItem}
 import trove.ui.tracking.TrackingPane
 
-private[ui] class ActiveProjectScene(project: Project) extends Scene {
+private[ui] class ActiveProjectScene(eventSubscriberGroup: Int, project: Project) extends Scene {
 
-  private[this] val trackingPane = new TrackingPane(project)
+  private[this] val trackingPane = new TrackingPane(eventSubscriberGroup, project)
 
   private[this] val tabPane = new TabPane {
     tabs = Seq(

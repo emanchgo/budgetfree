@@ -47,6 +47,8 @@ class UIEventListenerSpec extends FlatSpec with MockitoSugar with Matchers {
 
     val listener: UIEventListener = new UIEventListener {
 
+      override val eventSubscriberGroup = 42
+
       override def reportError[A](code: => Try[A]): Try[A] = code
 
       override def onReceive: PartialFunction[Event, Unit] = {

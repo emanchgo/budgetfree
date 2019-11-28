@@ -28,6 +28,9 @@ package object event {
   trait Event
   
   trait EventListener {
+    //ejf-fixMe: add unsubscribe tests here for groups
+    def eventSubscriberGroup: Int
+
     def subscribed(): Unit = {}
     def unsubscribed(): Unit = {}
     def onEvent: PartialFunction[Event,Unit]

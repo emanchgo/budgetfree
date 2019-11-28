@@ -28,8 +28,8 @@ import trove.core.Project
  *  along with Trove.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-private[ui] class TrackingPane(project: Project) extends SplitPane {
-  val accountPane = new AccountPane(project)
+private[ui] class TrackingPane(eventSubscriberGroup: Int, project: Project) extends SplitPane {
+  val accountPane = new AccountPane(eventSubscriberGroup, project)
   val ledgerPane = new LedgerPane(project)
 
   orientation = Horizontal

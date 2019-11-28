@@ -66,12 +66,16 @@ private[ui] object Main extends JFXApp with Logging {
       }
     }
 
+    // We will use 0 for the "global" / application-level event subscriber group.
+    // All other listeners should use one specific to the current project.
+    override val eventSubscriberGroup = 0
+
     def onReceive: PartialFunction[Event, Unit] = {
       case ProjectChanged(maybeProject) => maybeProject.fold[Unit](setWelcomeScene()){ prj =>
         hide()
         maximized = true
         title = s"$ApplicationName [ ${prj.name} ]"
-        scene = new ActiveProjectScene(prj)
+        scene = new ActiveProjectScene(43, prj)
         show()
       }
     }

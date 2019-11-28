@@ -26,17 +26,20 @@ package trove.ui.tracking
 import grizzled.slf4j.Logging
 import scalafx.event.ActionEvent
 import trove.core.Project
+import trove.services.AccountsService
+import trove.ui._
 
-private[tracking] class AccountFunctions(accountsCache: AccountsCache, project: Project) extends Logging{
+private[tracking] class AccountFunctions(accountsService: AccountsService, project: Project) extends Logging{
 
-  val addAccount: ActionEvent => Unit = _ => {
-    val accountDialog = new AccountDialog(
-      parentCandidates = accountsCache.getAllAccounts,
-      account=None
-    )
-    accountDialog.promptUntilValid { acct =>
-      logger.debug(s"Adding account: $acct")
-      project.accountsService.createAccount(acct)
+  val addAccount: ActionEvent => Unit = _ =>
+    promptUserWithError(accountsService.getAllAccounts).map { parentCandidates =>
+      val accountDialog = new AccountDialog(
+        parentCandidates = parentCandidates,
+        account = None
+      )
+      accountDialog.promptUntilValid { acct =>
+        logger.debug(s"Adding account: $acct")
+        project.accountsService.createAccount(acct)
+      }
     }
-  }
 }

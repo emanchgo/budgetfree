@@ -28,14 +28,12 @@ import scalafx.geometry.Insets
 import scalafx.scene.layout.BorderPane
 import trove.core.Project
 
-class AccountPane(project: Project) extends BorderPane {
+class AccountPane(eventSubscriberGroup: Int, project: Project) extends BorderPane {
 
-  val accountsCache = new AccountsCache(project)
-
-  private[this] val accountFunctions = new AccountFunctions(accountsCache, project)
+  private[this] val accountFunctions = new AccountFunctions(project.accountsService, project)
 
   padding = Insets(10)
-  center = new MainAccountsView(accountsCache)
+  center = new MainAccountsView(eventSubscriberGroup, project.accountsService)
   top = new AccountsButtonBar(
     addAccountFn = accountFunctions.addAccount
   )

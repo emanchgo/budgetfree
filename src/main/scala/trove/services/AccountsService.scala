@@ -26,9 +26,11 @@ import trove.models.Account
 
 import scala.util.Try
 
+//ejf-fixMe: Implement caching account service!
 trait AccountsService {
   def getAllAccounts: Try[Seq[Account]]
   def createAccount(account: Account): Try[Account]
+
   def updateAccount(account: Account): Try[Account]
   def deleteAccount(account: Account): Try[Account]
 }

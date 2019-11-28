@@ -101,10 +101,10 @@ private[tracking] final class AccountDialog(parentCandidates: Seq[Account], acco
   private[this] val accountDescriptionField = TextField(AccountDescriptionMeta)
   private[this] val isPlaceholderField = CheckBox(IsPlaceholderMeta)
   private[this] val unitField = TextField(UnitMeta)
-  private[this] val unitSelectButton = new Button {
-
+  private[this] val unitSelectButton = new Button("...") {
+    //ejf-fixMe: implement, defaults USD for most things?
   }
-  private[this] val smallestFraction = ChoiceBox(SmallestFractionMeta, Seq(.01, .001, .0001, .00001, .000001))
+  private[this] val smallestFraction = ChoiceBox(SmallestFractionMeta, Seq(".01", ".001", ".0001", ".00001", ".000001"))
 
   dialogPane().content = new AnchorPane {
     padding = Insets(10)
@@ -122,16 +122,24 @@ private[tracking] final class AccountDialog(parentCandidates: Seq[Account], acco
     AnchorPaneExt.setAnchors(isPlaceholderField, Line2 + 5, 685)
 
     // Line 3
+    AnchorPaneExt.setAnchors(accountParentField.label, Line3, 0)
+    AnchorPaneExt.setAnchors(accountParentField, Line3, 120)
+    AnchorPaneExt.setAnchors(unitField.label, Line3, 380)
+    AnchorPaneExt.setAnchors(unitSelectButton, Line3, 510)
+    AnchorPaneExt.setAnchors(unitField, Line3, 550)
 
-    // Line 4
-    AnchorPaneExt.setAnchors(accountParentField.label, Line4, 0)
-    AnchorPaneExt.setAnchors(accountParentField, Line4, 120)
+    // Line 4 - pushed to the right because of the parent choice box
+    AnchorPaneExt.setAnchors(smallestFraction.label, Line4, 380)
+    AnchorPaneExt.setAnchors(smallestFraction, Line4, 510)
+
     children = Seq(
       accountNameField.label, accountNameField,
       accountCodeField.label, accountCodeField,
       accountDescriptionField.label, accountDescriptionField,
       isPlaceholderField.label, isPlaceholderField,
-      accountParentField.label, accountParentField
+      unitField.label, unitField, unitSelectButton,
+      accountParentField.label, accountParentField,
+      smallestFraction.label, smallestFraction
     )
   }
 
@@ -144,6 +152,8 @@ private[tracking] final class AccountDialog(parentCandidates: Seq[Account], acco
     description = accountDescriptionField.text().trim.toOption,
     isPlaceholder = isPlaceholderField.isSelected,
     parentAccountId = accountParentField.selectedParentAccountId
+    //ejf-fixMe: add currency
+    //ejf-fixMe: add smallest fraction
   )
 
   private[this] def updateButtonStatus(): Unit =
