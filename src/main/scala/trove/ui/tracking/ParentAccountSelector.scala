@@ -26,7 +26,7 @@ package trove.ui.tracking
 import javafx.scene.control.TreeTableView
 import scalafx.beans.property.ObjectProperty
 import scalafx.geometry.Insets
-import scalafx.scene.control.{Label, SelectionMode, TreeItem}
+import scalafx.scene.control.{Label, TreeItem}
 import trove.models.Account
 import trove.models.AccountTypes.AccountType
 import trove.ui.fxext.FieldMetadata
@@ -38,8 +38,6 @@ object ParentAccountSelector {
 class ParentAccountSelector(metadata: FieldMetadata, accounts: Seq[Account]) extends AccountTreeTableView(accounts) {
   val label: Label = new Label(metadata.name)
   label.setPadding(Insets(5))
-
-  selectionModel().setSelectionMode(SelectionMode.Single)
 
   def selectedParentAccountId: Option[Long] = selectionModel().getSelectedItem.getValue.id
   def selectedParentAccountType: AccountType = selectionModel().getSelectedItem.getValue.accountType

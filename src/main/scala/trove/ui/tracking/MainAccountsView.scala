@@ -23,87 +23,20 @@
 
 package trove.ui.tracking
 
-import scalafx.beans.property.ReadOnlyObjectWrapper
-import scalafx.scene.control.{TreeTableColumn, TreeTableView}
 import trove.core.infrastructure.event
 import trove.events._
 import trove.models.Account
 import trove.models.AccountTypes.AccountType
 import trove.services.AccountsService
-import trove.ui.{UIEventListener, _}
-
-import scala.collection.mutable
+import trove.ui.UIEventListener
+import trove.ui._
 
 // The accounts view. We use a tree table view to get the account name column, although we do
 // disable user sorting of the data.
-private[tracking] class MainAccountsView(override val eventSubscriberGroup: Int, accountsService: AccountsService) extends TreeTableView[AccountTreeViewable] with UIEventListener {
-
-  @volatile private[this] var accountTypeItemsByAccountType: Map[AccountType, AccountTypeItem] = Map.empty
-  @volatile private[this] var accountItemsByAccountId: Map[Long, AccountItem] = Map.empty
-
-  root = new AccountRootItem {
-    children = accountTrees
-  }
-  showRoot = false
-
-  private[this] val accountNameColumn = new TreeTableColumn[AccountTreeViewable, AccountTreeViewable]("Account Name") {
-    // We want the ordering to be first by account type, and then by account name
-    comparator = (a: AccountTreeViewable, b: AccountTreeViewable) => {
-      val accountTypeCompare = a.accountType compare b.accountType
-      if (accountTypeCompare == 0) {
-        a.toString compare b.toString
-      }
-      else {
-        accountTypeCompare
-      }
-    }
-    sortable = false
-    cellValueFactory = { cdf =>
-      new ReadOnlyObjectWrapper[AccountTreeViewable](MainAccountsView.this, cdf.value.value().toString, cdf.value.value())
-    }
-  }
-  columns += accountNameColumn
-
-  // Fits the columns into the widget.
-  columnResizePolicy = TreeTableView.ConstrainedResizePolicy
-
-  sortOrder += accountNameColumn
-
-  // Builds the account trees, with each element returned representing the root of the account hierarchy tree for that account type.
-  private[this] def accountTrees: Seq[AccountTypeItem] = {
-    // Recursive method to expand a tree
-    def expandTree(account: Account, accountsByParentId: mutable.MultiMap[Option[Long], Account]): AccountItem = {
-      val accountItem = new AccountItem(new AccountView(account)) {
-        children = accountsByParentId.get(account.id).map { children =>
-          children.map(child => expandTree(child, accountsByParentId)).toSeq.sortBy(_.accountView.toString)
-        }.getOrElse(Seq.empty)
-      }
-      accountItemsByAccountId += account.id.get -> accountItem
-      accountItem
-    }
-
-    val accountsByParentId = new mutable.HashMap[Option[Long], mutable.Set[Account]] with mutable.MultiMap[Option[Long], Account]
-    promptUserWithError(accountsService.getAllAccounts).map { accounts =>
-      accounts.foreach(a => accountsByParentId.addBinding(a.parentAccountId, a))
-    }
-
-    val topLevelAccounts = accountsByParentId(None).toSeq
-    val accountTrees = for {
-      topLevelAccount <- topLevelAccounts
-    } yield {
-      expandTree(topLevelAccount, accountsByParentId)
-    }
-
-    accountTrees.groupBy { accountItem =>
-      accountItem.accountView.accountType
-    }.map { case (accountType, treeItems) =>
-      val accountTypeItem = new AccountTypeItem(new AccountTypeView(accountType)) {
-        children = treeItems.sortBy(_.accountView.toString)
-      }
-      accountTypeItemsByAccountType += accountType -> accountTypeItem
-      accountTypeItem
-    }.toSeq.sortBy(_.accountTypeView.accountType)
-  }
+//ejf-fixMe: refactor to use abstract base class: AccountTreeTableView
+private[tracking] class MainAccountsView(override val eventSubscriberGroup: Int, accountsService: AccountsService) extends AccountTreeTableView(
+  promptUserWithError(accountsService.getAllAccounts).toOption.getOrElse(Seq.empty)
+  ) with UIEventListener {
 
   override def onReceive: PartialFunction[event.Event, Unit] = {
     case AccountAdded(account) =>
@@ -115,7 +48,7 @@ private[tracking] class MainAccountsView(override val eventSubscriberGroup: Int,
     case AccountDeleted(id, parent) =>
       deleteAccount(id, parent)
     case ProjectChanged(_) =>
-      unsubscribe() // ejf-fixMe: Unsubscribe group! Might be a good way to quicky remove subscriptions for all things related to a project.
+      unsubscribe() // ejf-fixMe: Unsubscribe group! Might be a good way to quickly remove subscriptions for all things related to a project.
   }
 
   private[this] def addAccount(account: Account): Unit = {
@@ -123,40 +56,40 @@ private[tracking] class MainAccountsView(override val eventSubscriberGroup: Int,
 
     account.parentAccountId match {
       case Some(parentAccountId) =>
-        accountItemsByAccountId(parentAccountId).children += accountItem
+        accountItemsByAccountId.get(parentAccountId).children += accountItem
       case None =>
-        accountTypeItemsByAccountType(account.accountType).children += accountItem
+        accountTypeItemsByAccountType.get(account.accountType).children += accountItem
     }
-    accountItemsByAccountId += account.id.get -> accountItem
+    accountItemsByAccountId.put(account.id.get, accountItem)
   }
 
   private[this] def updateAccount(account: Account): Unit =
-    accountItemsByAccountId(account.id.get).update(account)
+    accountItemsByAccountId.get(account.id.get).update(account)
 
   private[this] def updateParent(accountId: Int, oldParent: Either[AccountType, Int], newParent: Either[AccountType, Int]): Unit = {
-    val accountItem = accountItemsByAccountId(accountId)
+    val accountItem = accountItemsByAccountId.get(accountId)
     oldParent match {
       case Left(accountType) =>
-        accountTypeItemsByAccountType(accountType).children -= accountItem
+        accountTypeItemsByAccountType.get(accountType).children -= accountItem
       case Right(oldParentId) =>
-        accountItemsByAccountId(oldParentId).children -= accountItem
+        accountItemsByAccountId.get(oldParentId).children -= accountItem
     }
     newParent match {
       case Left(accountType) =>
-        accountTypeItemsByAccountType(accountType).children += accountItem
+        accountTypeItemsByAccountType.get(accountType).children += accountItem
       case Right(newParentId) =>
-        accountItemsByAccountId(newParentId).children += accountItem
+        accountItemsByAccountId.get(newParentId).children += accountItem
     }
   }
 
   private[this] def deleteAccount(accountId: Int, parent: Either[AccountType, Int]): Unit = {
-    val accountItem = accountItemsByAccountId(accountId)
+    val accountItem = accountItemsByAccountId.get(accountId)
     accountItem.accountView.account.parentAccountId match {
       case Some(id) =>
-        accountItemsByAccountId(id).children -= accountItem
+        accountItemsByAccountId.get(id).children -= accountItem
       case None =>
-        accountTypeItemsByAccountType(accountItem.accountView.account.accountType).children -= accountItem
+        accountTypeItemsByAccountType.get(accountItem.accountView.account.accountType).children -= accountItem
     }
-    accountItemsByAccountId -= accountId
+    accountItemsByAccountId.remove(accountId)
   }
 }

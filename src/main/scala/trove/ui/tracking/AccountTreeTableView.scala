@@ -26,25 +26,27 @@ package trove.ui.tracking
 import java.util.concurrent.ConcurrentHashMap
 
 import scalafx.beans.property.ReadOnlyObjectWrapper
-import scalafx.scene.control.{TreeTableColumn, TreeTableView}
+import scalafx.scene.control.{SelectionMode, TreeTableColumn, TreeTableView}
 import trove.models.Account
 import trove.models.AccountTypes.AccountType
 
 import scala.collection.mutable
 
-//ejf-fixMe: refactor to use abstract base class: AccountTreeTableView
 private[tracking] abstract class AccountTreeTableView(accounts: Seq[Account]) extends TreeTableView[AccountTreeViewable] {
 
   // ejf-fixMe: use new abstract base class, and these can be concurrent hash maps.
+  // ejf-fixMe: analysis: remove @volatile in favor of ConcurrentHashMap everywhere
   protected val accountTypeItemsByAccountType: ConcurrentHashMap[AccountType, AccountTypeItem] = new ConcurrentHashMap
   protected val accountItemsByAccountId: ConcurrentHashMap[Long, AccountItem] = new ConcurrentHashMap
+
+  selectionModel().setSelectionMode(SelectionMode.Single)
 
   root = new AccountRootItem {
     children = accountTrees
   }
   showRoot = false
 
-  private[this] val accountNameColumn = new TreeTableColumn[AccountTreeViewable, AccountTreeViewable]("Account Name") {
+  private[this] val accountColumn = new TreeTableColumn[AccountTreeViewable, AccountTreeViewable]("Account Name") {
     // We want the ordering to be first by account type, and then by account name
     comparator = (a: AccountTreeViewable, b: AccountTreeViewable) => {
       val accountTypeCompare = a.accountType compare b.accountType
@@ -60,12 +62,12 @@ private[tracking] abstract class AccountTreeTableView(accounts: Seq[Account]) ex
       new ReadOnlyObjectWrapper[AccountTreeViewable](this, cdf.value.value().toString, cdf.value.value())
     }
   }
-  columns += accountNameColumn
+  columns += accountColumn
 
   // Fits the columns into the widget.
   columnResizePolicy = TreeTableView.ConstrainedResizePolicy
 
-  sortOrder += accountNameColumn
+  sortOrder += accountColumn
 
   // Builds the account trees, with each element returned representing the root of the account hierarchy tree for that account type.
   private[this] def accountTrees: Seq[AccountTypeItem] = {
@@ -83,7 +85,7 @@ private[tracking] abstract class AccountTreeTableView(accounts: Seq[Account]) ex
     val accountsByParentId = new mutable.HashMap[Option[Long], mutable.Set[Account]] with mutable.MultiMap[Option[Long], Account]
     accounts.foreach(a => accountsByParentId.addBinding(a.parentAccountId, a))
 
-    val topLevelAccounts = accountsByParentId(None).toSeq
+    val topLevelAccounts = accountsByParentId.get(None).map(_.toSeq).getOrElse(Seq.empty)
     val accountTrees = for {
       topLevelAccount <- topLevelAccounts
     } yield {

@@ -31,7 +31,7 @@ import scala.util.{Success, Try}
 class AccountsServiceImpl extends AccountsService {
   import AccountTypes._
 
-  override def getAllAccounts: Try[Seq[Account]] =
+  override def getAllAccounts: Try[Seq[Account]] = trove.exceptional.PersistenceError("foo")
     Success(
       Seq(
         Account(id = Some(110), version = 1, accountType=Asset, name="Asset A", code=None, isPlaceholder = true, Some("Asset A Account"), parentAccountId = None),

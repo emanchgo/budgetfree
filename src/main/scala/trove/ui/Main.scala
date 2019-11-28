@@ -75,7 +75,7 @@ private[ui] object Main extends JFXApp with Logging {
         hide()
         maximized = true
         title = s"$ApplicationName [ ${prj.name} ]"
-        scene = new ActiveProjectScene(43, prj)
+        scene = new ActiveProjectScene(43, prj) // ejf-fixMe: subscriber group!!
         show()
       }
     }

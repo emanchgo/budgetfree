@@ -94,6 +94,8 @@ private[tracking] final class AccountDialog(parentCandidates: Seq[Account], acco
   private[this] val id: Option[Long] = account.flatMap(_.id)
   private[this] val nextVersion: Long = account.map(_.version + 1).getOrElse(0)
 
+  // ejf-fixMe: take account name column header out for this case
+  // ejf-fixMe: set initial value to whatever was selected in main view
   private[this] val accountParentField = ParentAccountSelector(AccountParentMeta,
     account.map(a => parentCandidates.filterNot(_.id.get == a.id.get)).getOrElse(parentCandidates))
   private[this] val accountNameField = TextField(AccountNameMeta)
