@@ -15,7 +15,7 @@ private[persist] object Tables {
 
   // N.B. Change this value when modifying the structure of the database!
   // TODO: Work out db evolution!
-  val CurrentDbVersion = DBVersion(0)
+  val CurrentDbVersion: DBVersion = DBVersion(0)
 
   // VERSION TABLE
   class Version(tag: Tag) extends Table[DBVersion](tag, "VERSION") {

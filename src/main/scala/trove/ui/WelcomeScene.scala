@@ -21,7 +21,6 @@
  *  along with Trove.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-
 package trove.ui
 
 import grizzled.slf4j.Logging

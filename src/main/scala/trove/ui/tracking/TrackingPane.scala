@@ -1,10 +1,3 @@
-package trove.ui.tracking
-
-import scalafx.geometry.Orientation.Horizontal
-import scalafx.Includes._
-import scalafx.scene.control.SplitPane
-import trove.core.Project
-
 /*
  *  # Trove
  *
@@ -27,6 +20,13 @@ import trove.core.Project
  *  You should have received a copy of the GNU General Public License
  *  along with Trove.  If not, see <http://www.gnu.org/licenses/>.
  */
+
+package trove.ui.tracking
+
+import scalafx.Includes._
+import scalafx.geometry.Orientation.Horizontal
+import scalafx.scene.control.SplitPane
+import trove.core.Project
 
 private[ui] class TrackingPane(eventSubscriberGroup: Int, project: Project) extends SplitPane {
   val accountPane = new AccountPane(eventSubscriberGroup, project)

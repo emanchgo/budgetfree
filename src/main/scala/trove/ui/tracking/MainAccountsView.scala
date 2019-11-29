@@ -28,8 +28,7 @@ import trove.events._
 import trove.models.Account
 import trove.models.AccountTypes.AccountType
 import trove.services.AccountsService
-import trove.ui.UIEventListener
-import trove.ui._
+import trove.ui.{UIEventListener, _}
 
 // The accounts view. We use a tree table view to get the account name column, although we do
 // disable user sorting of the data.

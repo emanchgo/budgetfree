@@ -23,45 +23,129 @@
 package trove.cache
 
 import java.util.concurrent.ConcurrentHashMap
+import java.util.function.BiFunction
 
+import grizzled.slf4j.Logging
+import trove.cache.ActiveCache.CacheOperation
 import trove.core.Trove
 import trove.core.infrastructure.event.{Event, EventListener}
 
-trait CacheKey
-case class IndexDef[A](name: String, keyFn: A => CacheKey)
+import scala.collection.JavaConverters._
 
-//ejf-fixMe: develop and test.
-class ActiveCache[A](override val eventSubscriberGroup: Int, initialize: => Seq[A], indexDefs: Seq[IndexDef[A]]) extends EventListener {
-  require(indexDefs.nonEmpty, "Indexes defined in a cache must not be empty")
-  require(indexDefs.count(_.name == "Primary") == 1, """The cache must contain exactly one index defined with the name "Primary"""" )
-  for(idxDef <- indexDefs) {
-    require(indexDefs.count(_.name == idxDef.name) == 1, s"""There can be no duplicate indexes defined in a cache: "${idxDef.name}" occurs more than once! """)
+case class IndexDef[+K, A](keyFn: A => K)
+
+object ActiveCache {
+
+  sealed trait CacheOperation
+
+  def apply[A](
+    cacheName: String,
+    eventSubscriberGroup: Int,
+    indexDefs: Seq[IndexDef[_, A]],
+    determineCacheOperation: Event => CacheOperation,
+    sequenceNumber: A => Long,
+    initialize: => Seq[A])  : ActiveCache[A] = new ActiveCache[A](cacheName, eventSubscriberGroup, indexDefs, determineCacheOperation, sequenceNumber, initialize)
+
+  private[ActiveCache] implicit class BifunctionConverter[A](fn: (Any, A) => Option[A]) {
+    private[this] var nullA : A = _ // must be a var to get null to work for type A
+    def asJava: BiFunction[Any, A, A] = (key: Any, element: A) => fn(key, element).getOrElse(nullA)
+  }
+}
+
+class ActiveCache[A] private[ActiveCache] (
+  cacheName: String,
+  override val eventSubscriberGroup: Int,
+  indexDefs: Seq[IndexDef[_, A]],
+  determineCacheOperation: Event => CacheOperation,
+  sequenceNumber: A => Long,
+  initialize: => Seq[A])
+  extends EventListener with Logging {
+
+  import ActiveCache._
+
+  object CacheOperations {
+    case class Add(element: A) extends CacheOperation
+    case class Update(element: A) extends CacheOperation
+    case class Delete(indexDef: IndexDef[_, A], key: Any, sequenceNumber: Long) extends CacheOperation
+    case object NoOp extends CacheOperation
   }
 
+  require(indexDefs.nonEmpty, "Indexes defined in a cache must not be empty")
 
-  // Initialize cache with indexes
-  private[this] val indexes: Map[IndexDef[A], ConcurrentHashMap[CacheKey, A]] = indexDefs.map { indexDef =>
-    indexDef -> new ConcurrentHashMap[CacheKey, A]
-  }.toMap
+  private[this] val indexes: ConcurrentHashMap[IndexDef[_, A], ConcurrentHashMap[Any, A]] = new ConcurrentHashMap[IndexDef[_, A], ConcurrentHashMap[Any, A]]
+  for {
+    indexDef <- indexDefs
+  } yield {
+    indexes.put(indexDef, new ConcurrentHashMap[Any, A])
+  }
 
-  Trove.eventService.subscribe(this)
+  Trove.eventService.subscribe(listener = this)
 
-  def getAll: Seq[A] = ???
-  def getById: A = ???
+  private[this] val updateFn: A => (Any, A) => Option[A] = newElement => (_, element) =>  {
+    val oldSequenceNumber = sequenceNumber(element)
+    val newSequenceNumber = sequenceNumber(newElement)
+    if(newSequenceNumber > oldSequenceNumber){
+      Some(newElement)
+    } else {
+      Some(element)
+    }
+  }
 
-  override def onEvent: PartialFunction[Event, Unit] = ???
-//
-//
-//  def get(id: Long): Option[Account] = Option(cache.get(id))
-//  def getAllAccounts: Seq[Account] = cache.values().asScala.toSeq
-//
-//  override def onReceive: PartialFunction[Event,Unit] = {
-//    case AccountAdded(account) =>
-//      cache.put(account.id.get, account)
-//    case AccountUpdated(account) =>
-//      cache.put(account.id.get, account)
-//    // NOTE: If we decide to track account parent-child relationships in the cache, we will need to consume and process AccountParentChanged.
-//    case AccountDeleted(id, _) =>
-//      cache.remove(id)
-//  }
+  private[this] val deleteFn: Long => (Any, A) => Option[A] = newSequenceNumber => (_, element) => {
+    val oldSequenceNumber = sequenceNumber(element)
+    if(newSequenceNumber > oldSequenceNumber) {
+      None
+    } else {
+      Some(element)
+    }
+  }
+
+  // Initialize.
+  // This cache initializes itself at instantiation time and automatically updates itself when things change.
+  for {
+    element <- initialize
+  } {
+    // Put if absent: because if (for some reason) another thread published an update, it should take precedence.
+    // When we update the cache due to the receipt of an event, we'll check versions.
+    updateIndexes(element, updateFn(element))
+  }
+
+  def getAll[K](indexDef: IndexDef[K, A]): Seq[A] =
+    getIndex(indexDef).map(_.values().asScala.toSeq).getOrElse(Seq.empty)
+
+  def get[K](indexDef: IndexDef[K, A], key: K): Option[A] = getIndex(indexDef).map(_.get(key))
+
+  private[this] def getIndex[K](indexDef: IndexDef[K, A]): Option[ConcurrentHashMap[Any, A]] = {
+    val maybeIndex = Option(indexes.get(indexDef))
+    if(maybeIndex.isEmpty) {
+      logger.error(msg =s"Unknown index selected in active cache (name=$cacheName)")
+    }
+    maybeIndex
+  }
+
+  private[this] def updateIndexes(element: A, fn: (Any, A) => Option[A]): Unit =
+    for {
+      indexDef <- indexDefs
+      key = indexDef.keyFn(element)
+      index = indexes.get(indexDef)
+    } {
+      index.compute(key, fn.asJava)
+    }
+
+  import CacheOperations._
+
+  override def onEvent: PartialFunction[Event, Unit] = {
+    case event => determineCacheOperation(event) match {
+      case Add(element) => updateIndexes(element, updateFn(element))
+      case Update(element) => updateIndexes(element, updateFn(element))
+      case Delete(idxDef, key, sequenceNum) =>
+        get(idxDef, key).foreach { element =>
+          updateIndexes(element, deleteFn(sequenceNum))
+        }
+      case NoOp =>
+      case _ =>
+        // invalid, you got some other cache's CacheOperation here!
+        logger.error(msg = s"Error in cache $cacheName: Invalid CacheOperation object - perhaps the cache operations got mixed up!")
+    }
+  }
 }
