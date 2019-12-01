@@ -34,7 +34,6 @@ import scala.collection.mutable
 
 private[tracking] abstract class AccountTreeTableView(accounts: Seq[Account]) extends TreeTableView[AccountTreeViewable] {
 
-  // ejf-fixMe: use new abstract base class, and these can be concurrent hash maps.
   // ejf-fixMe: analysis: remove @volatile in favor of ConcurrentHashMap everywhere
   protected val accountTypeItemsByAccountType: ConcurrentHashMap[AccountType, AccountTypeItem] = new ConcurrentHashMap
   protected val accountItemsByAccountId: ConcurrentHashMap[Long, AccountItem] = new ConcurrentHashMap

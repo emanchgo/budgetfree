@@ -25,27 +25,25 @@ package trove.ui.tracking
 
 import trove.core.infrastructure.event
 import trove.events._
-import trove.models.Account
-import trove.models.AccountTypes.AccountType
+import trove.models.{Account, AccountParent}
 import trove.services.AccountsService
-import trove.ui.{UIEventListener, _}
+import trove.ui._
 
 // The accounts view. We use a tree table view to get the account name column, although we do
 // disable user sorting of the data.
-//ejf-fixMe: refactor to use abstract base class: AccountTreeTableView
 private[tracking] class MainAccountsView(override val eventSubscriberGroup: Int, accountsService: AccountsService) extends AccountTreeTableView(
   promptUserWithError(accountsService.getAllAccounts).toOption.getOrElse(Seq.empty)
   ) with UIEventListener {
 
   override def onReceive: PartialFunction[event.Event, Unit] = {
-    case AccountAdded(account) =>
+    case ItemAdded(_, account: Account) =>
       addAccount(account)
-    case AccountUpdated(account) =>
+    case ItemUpdated(_, account: Account) =>
       updateAccount(account)
     case AccountParentChanged(id, oldParent, newParent) =>
       updateParent(id, oldParent, newParent)
-    case AccountDeleted(id, parent) =>
-      deleteAccount(id, parent)
+    case ItemDeleted(_, account: Account) =>
+      deleteAccount(account.id.get, account.parentAccountId.map[AccountParent](Right(_)).getOrElse(Left(account.accountType)))
     case ProjectChanged(_) =>
       unsubscribe() // ejf-fixMe: Unsubscribe group! Might be a good way to quickly remove subscriptions for all things related to a project.
   }
@@ -65,7 +63,7 @@ private[tracking] class MainAccountsView(override val eventSubscriberGroup: Int,
   private[this] def updateAccount(account: Account): Unit =
     accountItemsByAccountId.get(account.id.get).update(account)
 
-  private[this] def updateParent(accountId: Int, oldParent: Either[AccountType, Int], newParent: Either[AccountType, Int]): Unit = {
+  private[this] def updateParent(accountId: Int, oldParent: AccountParent, newParent: AccountParent): Unit = {
     val accountItem = accountItemsByAccountId.get(accountId)
     oldParent match {
       case Left(accountType) =>
@@ -81,7 +79,7 @@ private[tracking] class MainAccountsView(override val eventSubscriberGroup: Int,
     }
   }
 
-  private[this] def deleteAccount(accountId: Int, parent: Either[AccountType, Int]): Unit = {
+  private[this] def deleteAccount(accountId: Long, parent: AccountParent): Unit = {
     val accountItem = accountItemsByAccountId.get(accountId)
     accountItem.accountView.account.parentAccountId match {
       case Some(id) =>
