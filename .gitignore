@@ -3,6 +3,7 @@
 *.iml
 
 # sbt specific
+.bsp/
 .cache
 .history
 .lib/

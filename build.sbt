@@ -5,7 +5,7 @@
  *  helps you track your finances, FREES you from complex budgeting, and
  *  enables you to build your TROVE of savings!
  *
- *  Copyright © 2016-2019 Eric John Fredericks.
+ *  Copyright © 2016-2021 Eric John Fredericks.
  *
  *  Trove is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -21,36 +21,39 @@
  *  along with Trove.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-
+//ejf-fixMe: change to org.kalergic
 organization := "net.ericfredericks"
-
 name := "trove"
-
 version := "0.1.0-SNAPSHOT"
-
-scalaVersion := "2.12.8"
-
+scalaVersion := "2.13.5"
 scalacOptions ++= Seq("-deprecation", "-feature")
-
 javaOptions ++= Seq("-Djdk.gtk.version=2")
-
 coverageEnabled := true
 coverageExcludedPackages := "trove\\.models\\..*;trove\\.event\\..*;trove\\.ui\\..*"
+resolvers += "Artima Maven Repository" at "https://repo.artima.com/releases"
+
+Global / onChangedBuildSource := ReloadOnSourceChanges
 
 // Versions
-val akkaVersion          = "2.5.22"
-val grizzledSlf4jVersion = "1.3.3"
-val scalaFxVersion       = "12.0.1-R17"
-val javaFxVersion        = "12.0.1"
-val slf4jVersion         = "1.7.16"
-val slickVersion         = "3.3.0"
-val sqliteJdbcVersion    = "3.27.2.1"
+//ejf-fixMe: upgrade akka, stop using classic interface
+val akkaVersion          = "2.6.13"
 
-//ejf-fixMe: try out mockito-scala
-val mockitoVersion       = "2.27.0"
+val grizzledSlf4jVersion = "1.3.4"
 
-val scalacticVersion     = "3.0.5"
-val scalatestVersion     = "3.0.5"
+//ejf-fixMe: drop mockito
+val mockitoScalaVersion = "1.16.33"
+
+val scalaFxVersion       = "15.0.1-R21"
+val javaFxVersion        = "16"
+val slf4jVersion         = "1.7.30"
+
+//ejf-fixMe: replace slick (quill)
+val slickVersion         = "3.3.3"
+
+val sqliteJdbcVersion    = "3.34.0"
+
+val scalacticVersion     = "3.2.5"
+val scalatestVersion     = "3.2.5"
 
 // UI
 libraryDependencies ++= Seq(
@@ -71,6 +74,9 @@ libraryDependencies ++= javaFXModules.map( m =>
   "org.openjfx" % s"javafx-$m" % "11" classifier osName
 )
 
+// Scala
+libraryDependencies += "org.scala-lang.modules" %% "scala-collection-compat" % "2.4.3"
+
 // Logging
 libraryDependencies ++= Seq(
   "org.slf4j" % "slf4j-api" % slf4jVersion,
@@ -84,10 +90,10 @@ libraryDependencies ++= Seq(
   "com.typesafe.akka" %% "akka-slf4j" % akkaVersion
 )
 
-// ScalaTest
+// Test
 libraryDependencies ++= Seq(
   "org.scalatest" %% "scalatest" % scalatestVersion % Test,
-  "org.mockito" % "mockito-core" % mockitoVersion % Test
+  "org.mockito" %% "mockito-scala" % mockitoScalaVersion % Test
 )
 
 // Database

@@ -5,7 +5,7 @@
  *  helps you track your finances, FREES you from complex budgeting, and
  *  enables you to build your TROVE of savings!
  *
- *  Copyright © 2016-2019 Eric John Fredericks.
+ *  Copyright © 2016-2021 Eric John Fredericks.
  *
  *  Trove is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -24,11 +24,12 @@
 package trove.core.infrastructure.event
 
 import akka.actor.ActorSystem
+import org.mockito.MockitoSugar
 import org.scalatest.concurrent.Eventually.eventually
-import org.scalatest.mockito.MockitoSugar
-import org.scalatest.{FlatSpec, Matchers}
+import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.matchers.should
 
-class EventServiceImplSpec extends FlatSpec with MockitoSugar with Matchers {
+class EventServiceImplSpec extends AnyFlatSpec with MockitoSugar with should.Matchers {
 
   case class TestEvent(id: Int) extends Event
 

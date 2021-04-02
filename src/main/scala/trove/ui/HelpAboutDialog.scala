@@ -5,7 +5,7 @@
  *  helps you track your finances, FREES you from complex budgeting, and
  *  enables you to build your TROVE of savings!
  *
- *  Copyright © 2016-2019 Eric John Fredericks.
+ *  Copyright © 2016-2021 Eric John Fredericks.
  *
  *  Trove is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -32,36 +32,34 @@ import scalafx.scene.layout.VBox
 import trove.constants.ApplicationVersion
 import trove.ui.ButtonTypes._
 import trove.ui.fxext.AppModalAlert
-import trove.util.io._
 
-import scala.io.Source
-import scala.util.Try
+import scala.io.{BufferedSource, Source}
+import scala.util.Using
 
 private[ui] class HelpAboutDialog extends AppModalAlert(AlertType.Information) {
   graphic = new ImageView(ApplicationIconImage64)
   headerText = "About Trove"
 
-  val appLabel_1 = Label(s"Trove Version $ApplicationVersion")
-  val description_1 = Label("A FREE desktop application that helps you track your finances,")
-  val description_2 = Label("FREES you from complex budgeting, and enables you to build your TROVE of savings!")
-  val copyrightLabel = Label("Copyright © 2016-2019 Eric John Fredericks")
-  val licenseLinkLabel = Label("This software is licensed under the")
+  val appLabel_1: Label = Label(s"Trove Version $ApplicationVersion")
+  val description_1: Label = Label("A FREE desktop application that helps you track your finances,")
+  val description_2: Label = Label("FREES you from complex budgeting, and enables you to build your TROVE of savings!")
+  val copyrightLabel: Label = Label("Copyright © 2016-2021 Eric John Fredericks")
+  val licenseLinkLabel: Label = Label("This software is licensed under the")
   val licenseLink: Hyperlink = new Hyperlink {
     text = "GNU General Public License, version 3.0"
     onAction = (_: ActionEvent) => { Main.hostServices.showDocument("https://www.gnu.org/licenses/gpl-3.0.txt")}
   }
-  val iconLinkLabel = Label("Icons provided are free for personal or commercial use under license by")
+  val iconLinkLabel: Label = Label("Icons provided are free for personal or commercial use under license by")
   val iconLink: Hyperlink = new Hyperlink {
     text = "Icons8."
     onAction = (_: ActionEvent) => { Main.hostServices.showDocument("https://icons8.com")}
   }
-  val thirdPartyLicenseLinkLabel = Label("This software incorporates many open source libraries.")
+  val thirdPartyLicenseLinkLabel: Label = Label("This software incorporates many open source libraries.")
 
   private[this] def thirdPartyLicenseTextArea: TextArea = {
-
     val fileContents: String = promptUserWithError {
-      using(Source.fromURL(ThirdPartyLicenseUrlTextUrl)) { bufferedSource =>
-        Try(bufferedSource.getLines.mkString("\n"))
+      Using[BufferedSource, String](Source.fromURL(ThirdPartyLicenseUrlTextUrl)) { bufferedSource =>
+        bufferedSource.getLines().mkString("\n")
       }
     }.toOption.getOrElse("")
     val ta = new TextArea(fileContents)

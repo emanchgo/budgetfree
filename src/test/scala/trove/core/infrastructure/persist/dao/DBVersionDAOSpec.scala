@@ -5,7 +5,7 @@
  *  helps you track your finances, FREES you from complex budgeting, and
  *  enables you to build your TROVE of savings!
  *
- *  Copyright © 2016-2019 Eric John Fredericks.
+ *  Copyright © 2016-2021 Eric John Fredericks.
  *
  *  Trove is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -23,7 +23,8 @@
 
 package trove.core.infrastructure.persist.dao
 
-import org.scalatest.{FlatSpec, Matchers}
+import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.matchers.should
 import trove.core.infrastructure.persist.schema.Tables
 import trove.core.infrastructure.persist.schema.Tables._
 import trove.core.infrastructure.persist.DBVersion
@@ -31,7 +32,7 @@ import trove.exceptional.PersistenceError
 
 import scala.util.{Failure, Success, Try}
 
-class DBVersionDAOSpec extends FlatSpec with Matchers {
+class DBVersionDAOSpec extends AnyFlatSpec with should.Matchers {
 
   // For when the DB successfully returns some valid result (could be empty), default is a single row
   trait DbSuccessFixture {

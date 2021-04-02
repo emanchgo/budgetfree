@@ -5,7 +5,7 @@
  *  helps you track your finances, FREES you from complex budgeting, and
  *  enables you to build your TROVE of savings!
  *
- *  Copyright © 2016-2019 Eric John Fredericks.
+ *  Copyright © 2016-2021 Eric John Fredericks.
  *
  *  Trove is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -61,12 +61,11 @@ private[core] class TroveImpl extends Trove with Logging {
     actorSystem
     eventService
     projectService
-    Success(Unit)
+    Success(())
   }
 
   final def shutdown(): Try[Unit] = projectService.closeCurrentProject().flatMap { _ =>
-    Try(eventService.shutdown()).map(_ =>
-        Unit)
+    Try(eventService.shutdown()).map(_ => ())
   }
 }
 

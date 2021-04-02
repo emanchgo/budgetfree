@@ -5,7 +5,7 @@
  *  helps you track your finances, FREES you from complex budgeting, and
  *  enables you to build your TROVE of savings!
  *
- *  Copyright © 2016-2019 Eric John Fredericks.
+ *  Copyright © 2016-2021 Eric John Fredericks.
  *
  *  Trove is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -23,18 +23,18 @@
 
 package trove.core.infrastructure.persist.lock
 
+import org.mockito.MockitoSugar
+import org.scalatest.BeforeAndAfterEach
+import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.matchers.should
+import trove.exceptional.SystemException
+
 import java.io.{File, IOException, RandomAccessFile}
 import java.nio.channels.FileLock
 import java.nio.file.Files
-
-import org.mockito.Mockito._
-import org.scalatest.mockito.MockitoSugar
-import org.scalatest.{BeforeAndAfterEach, FlatSpec, Matchers}
-import trove.exceptional.SystemException
-
 import scala.util.{Failure, Success, Try}
 
-class ProjectLockSpec extends FlatSpec with MockitoSugar with BeforeAndAfterEach with Matchers {
+class ProjectLockSpec extends AnyFlatSpec with MockitoSugar with BeforeAndAfterEach with should.Matchers {
 
   import ProjectLock._
 
@@ -67,6 +67,7 @@ class ProjectLockSpec extends FlatSpec with MockitoSugar with BeforeAndAfterEach
 
     var channelsCreated: List[RandomAccessFile] = List.empty
     val mockChannel: LockableChannel = mock[LockableChannel]
+    var channelTryLockReturnsNull = false
 
     val mockFileLock: FileLock = mock[FileLock]
 
@@ -91,6 +92,7 @@ class ProjectLockSpec extends FlatSpec with MockitoSugar with BeforeAndAfterEach
 
       override def newChannel(raf: RandomAccessFile): LockableChannel = {
         channelsCreated = raf +: channelsCreated
+        if(channelTryLockReturnsNull) when(mockChannel.tryLock()).thenReturn(null)
         mockChannel
       }
 
@@ -109,15 +111,17 @@ class ProjectLockSpec extends FlatSpec with MockitoSugar with BeforeAndAfterEach
 
     verify(mockChannel, times(1)).tryLock()
 
-    verify(mockFileLock, never()).release()
-    verify(mockFileLock, never()).close()
-    verify(mockChannel, never()).close()
-    verify(mockFile, never()).delete()
+    verify(mockFileLock, never).release()
+    verify(mockFileLock, never).close()
+    verify(mockChannel, never).close()
+    verify(mockFile, never).delete()
 
     handleErrorArgs shouldBe empty
 }
 
   it should "return SystemError and not allocate resources if it cannot acquire lock (tryLock returns null)" in new Fixture {
+    channelTryLockReturnsNull = true
+
     val result: Try[Unit] = projectLock.lock()
     result match {
       case Failure(_: SystemException) => // no op
@@ -130,11 +134,11 @@ class ProjectLockSpec extends FlatSpec with MockitoSugar with BeforeAndAfterEach
 
     verify(mockChannel, times(1)).tryLock()
 
-    verify(mockFileLock, never()).release()
-    verify(mockFileLock, never()).close()
+    verify(mockFileLock, never).release()
+    verify(mockFileLock, never).close()
 
     verify(mockChannel, times(1)).close()
-    verify(mockFile, never()).delete()
+    verify(mockFile, never).delete()
 
     handleErrorArgs should not be empty
     val failures: List[Try[Unit]] = handleErrorArgs.filter(_.isFailure)
@@ -153,13 +157,13 @@ class ProjectLockSpec extends FlatSpec with MockitoSugar with BeforeAndAfterEach
     randomAccessFilesCreated shouldBe empty
     channelsCreated shouldBe empty
 
-    verify(mockChannel, never()).tryLock()
+    verify(mockChannel, never).tryLock()
 
-    verify(mockFileLock, never()).release()
-    verify(mockFileLock, never()).close()
+    verify(mockFileLock, never).release()
+    verify(mockFileLock, never).close()
 
-    verify(mockChannel, never()).close()
-    verify(mockFile, never()).delete()
+    verify(mockChannel, never).close()
+    verify(mockFile, never).delete()
 
     handleErrorArgs shouldBe empty
   }
@@ -179,11 +183,11 @@ class ProjectLockSpec extends FlatSpec with MockitoSugar with BeforeAndAfterEach
 
     verify(mockChannel, times(1)).tryLock()
 
-    verify(mockFileLock, never()).release()
-    verify(mockFileLock, never()).close()
+    verify(mockFileLock, never).release()
+    verify(mockFileLock, never).close()
 
     verify(mockChannel, times(1)).close()
-    verify(mockFile, never()).delete()
+    verify(mockFile, never).delete()
 
     handleErrorArgs should not be empty
     handleErrorArgs.filter(_.isFailure) shouldBe empty

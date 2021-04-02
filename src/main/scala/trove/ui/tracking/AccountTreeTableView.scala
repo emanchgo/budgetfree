@@ -5,7 +5,7 @@
  *  helps you track your finances, FREES you from complex budgeting, and
  *  enables you to build your TROVE of savings!
  *
- *  Copyright © 2016-2019 Eric John Fredericks.
+ *  Copyright © 2016-2021 Eric John Fredericks.
  *
  *  Trove is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -24,11 +24,11 @@
 package trove.ui.tracking
 
 import java.util.concurrent.ConcurrentHashMap
-
 import scalafx.beans.property.ReadOnlyObjectWrapper
 import scalafx.scene.control.{SelectionMode, TreeTableColumn, TreeTableView}
 import trove.models.Account
 import trove.models.AccountTypes.AccountType
+import trove.util.collections.MultiMap
 
 import scala.collection.mutable
 
@@ -71,7 +71,7 @@ private[tracking] abstract class AccountTreeTableView(accounts: Seq[Account]) ex
   // Builds the account trees, with each element returned representing the root of the account hierarchy tree for that account type.
   private[this] def accountTrees: Seq[AccountTypeItem] = {
     // Recursive method to expand a tree
-    def expandTree(account: Account, accountsByParentId: mutable.MultiMap[Option[Long], Account]): AccountItem = {
+    def expandTree(account: Account, accountsByParentId: MultiMap[Option[Long], Account]): AccountItem = {
       val accountItem = new AccountItem(new AccountView(account)) {
         children = accountsByParentId.get(account.id).map { children =>
           children.map(child => expandTree(child, accountsByParentId)).toSeq.sortBy(_.accountView.toString)
@@ -81,7 +81,7 @@ private[tracking] abstract class AccountTreeTableView(accounts: Seq[Account]) ex
       accountItem
     }
 
-    val accountsByParentId = new mutable.HashMap[Option[Long], mutable.Set[Account]] with mutable.MultiMap[Option[Long], Account]
+    val accountsByParentId = new mutable.HashMap[Option[Long], mutable.Set[Account]] with MultiMap[Option[Long], Account]
     accounts.foreach(a => accountsByParentId.addBinding(a.parentAccountId, a))
 
     val topLevelAccounts = accountsByParentId.get(None).map(_.toSeq).getOrElse(Seq.empty)

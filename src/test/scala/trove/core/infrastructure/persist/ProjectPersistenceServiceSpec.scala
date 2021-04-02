@@ -5,7 +5,7 @@
  *  helps you track your finances, FREES you from complex budgeting, and
  *  enables you to build your TROVE of savings!
  *
- *  Copyright © 2016-2019 Eric John Fredericks.
+ *  Copyright © 2016-2021 Eric John Fredericks.
  *
  *  Trove is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -23,13 +23,9 @@
 
 package trove.core.infrastructure.persist
 
-import java.io.File
-import java.sql.SQLException
-
-import javax.sql.DataSource
-import org.mockito.Mockito._
-import org.scalatest.mockito.MockitoSugar
-import org.scalatest.{FlatSpec, Matchers}
+import org.mockito.MockitoSugar
+import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.matchers.should
 import slick.dbio.{DBIOAction, NoStream}
 import slick.jdbc.DriverDataSource
 import slick.util.ClassLoaderUtil
@@ -38,11 +34,14 @@ import trove.core.infrastructure.persist.lock.ProjectLock
 import trove.core.infrastructure.persist.schema.Tables
 import trove.exceptional.{PersistenceError, PersistenceException, SystemError}
 
+import java.io.File
+import java.sql.SQLException
+import javax.sql.DataSource
 import scala.concurrent.Future
 import scala.reflect.runtime.universe._
 import scala.util.{Failure, Success, Try}
 
-class ProjectPersistenceServiceSpec extends FlatSpec with Matchers with MockitoSugar {
+class ProjectPersistenceServiceSpec extends AnyFlatSpec with should.Matchers with MockitoSugar {
   import ProjectPersistenceService._
 
   trait ProjectDirFixture {
@@ -186,7 +185,7 @@ class ProjectPersistenceServiceSpec extends FlatSpec with Matchers with MockitoS
         project.db should not be null
         project.lock shouldBe mockLock
         verify(project.lock, times(1)).lock()
-        verify(project.lock, never()).release()
+        verify(project.lock, never).release()
         runDbIOActions should contain theSameElementsAs List(Tables.versionQuery)
         forDataSourceArgs should have size 1
         val (ds, numWorkers) = forDataSourceArgs.head
@@ -219,7 +218,7 @@ class ProjectPersistenceServiceSpec extends FlatSpec with Matchers with MockitoS
         project.db should not be null
         project.lock shouldBe mockLock
         verify(project.lock, times(1)).lock()
-        verify(project.lock, never()).release()
+        verify(project.lock, never).release()
         runDbIOActions should contain theSameElementsInOrderAs  List(Tables.setupAction, Tables.versionQuery)
         forDataSourceArgs should have size 1
         val (ds, numWorkers) = forDataSourceArgs.head
@@ -267,7 +266,7 @@ class ProjectPersistenceServiceSpec extends FlatSpec with Matchers with MockitoS
       case Success(_) =>
 
         verify(mockLock, times(1)).lock()
-        verify(mockLock, never()).release()
+        verify(mockLock, never).release()
 
         val anotherProj = "foobarbaz"
         assume(!projectNames.get.contains(anotherProj))
@@ -450,7 +449,7 @@ class ProjectPersistenceServiceSpec extends FlatSpec with Matchers with MockitoS
         project.db should not be null
         project.lock shouldBe mockLock
         verify(project.lock, times(1)).lock()
-        verify(project.lock, never()).release()
+        verify(project.lock, never).release()
         runDbIOActions should contain theSameElementsAs List(Tables.versionQuery)
         forDataSourceArgs should have size 1
         val (ds, numWorkers) = forDataSourceArgs.head
@@ -486,7 +485,7 @@ class ProjectPersistenceServiceSpec extends FlatSpec with Matchers with MockitoS
         project.db should not be null
         project.lock shouldBe mockLock
         verify(project.lock, times(1)).lock()
-        verify(project.lock, never()).release()
+        verify(project.lock, never).release()
         runDbIOActions should contain theSameElementsInOrderAs  List(Tables.setupAction, Tables.versionQuery)
         forDataSourceArgs should have size 1
         val (ds, numWorkers) = forDataSourceArgs.head
@@ -514,7 +513,7 @@ class ProjectPersistenceServiceSpec extends FlatSpec with Matchers with MockitoS
     projectService.open(projectName) match {
       case Success(_) =>
         verify(mockLock, times(1)).lock()
-        verify(mockLock, never()).release()
+        verify(mockLock, never).release()
         projectService.closeCurrentProject() match {
           case Success(_) =>
             projectService.currentProject shouldBe empty
@@ -547,7 +546,7 @@ class ProjectPersistenceServiceSpec extends FlatSpec with Matchers with MockitoS
     projectService.open(projectName) match {
       case Success(_) =>
         verify(mockLock, times(1)).lock()
-        verify(mockLock, never()).release()
+        verify(mockLock, never).release()
 
         val dbCloseException = new RuntimeException("db doom")
         doThrow(dbCloseException).when(mockDb).close()
@@ -556,7 +555,7 @@ class ProjectPersistenceServiceSpec extends FlatSpec with Matchers with MockitoS
           case PersistenceError(_, cause) =>
             cause shouldBe Some(dbCloseException)
             projectService.currentProject should not be empty
-            verify(mockLock, never()).release()
+            verify(mockLock, never).release()
             verify(mockDb, times(1)).close()
             verifyNoMoreInteractions(mockLock, mockDb)
           case somethingElse =>
@@ -575,7 +574,7 @@ class ProjectPersistenceServiceSpec extends FlatSpec with Matchers with MockitoS
     projectService.open(projectName) match {
       case Success(_) =>
         verify(mockLock, times(1)).lock()
-        verify(mockLock, never()).release()
+        verify(mockLock, never).release()
 
         val lockReleaseException = new RuntimeException("db doom")
         doThrow(lockReleaseException).when(mockLock).release()
